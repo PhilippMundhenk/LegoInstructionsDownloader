@@ -10,6 +10,11 @@ RUN apt-get -y install \
 		lighttpd \
         php-cgi \
         php-curl \
+		libglib2.0-0 \
+		libnss3 \
+		libgconf-2-4 \
+		libfontconfig1 \
+		chromium \
 		&& apt-get -y clean
 
 RUN cp /etc/lighttpd/conf-available/05-auth.conf /etc/lighttpd/conf-enabled/
@@ -24,5 +29,6 @@ RUN pip install selenium
 ADD index.php /var/www/html
 ADD fetch.py /var/www/
 RUN chown -R www-data /var/www/
+RUN chmod u+x /var/www/fetch.py 
 
 CMD ["/usr/sbin/lighttpd", "-D", "-f", "/etc/lighttpd/lighttpd.conf"]
