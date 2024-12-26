@@ -1,10 +1,26 @@
-FROM php:7.1.3-fpm
+FROM ubuntu:22.04
 
-RUN apt-get update && apt-get install -y libmcrypt-dev \
-    mysql-client libmagickwand-dev --no-install-recommends \
-    && pecl install imagick \
-    && docker-php-ext-enable imagick \
-&& docker-php-ext-install mcrypt pdo_mysql
+RUN DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get update && apt-get -y install tzdata && apt-get -y clean
+
+RUN apt-get update && apt-get install -y --no-install-recommends apt-utils && apt-get -y clean
+
+RUN apt-get -y update && apt-get -y upgrade && apt-get -y clean
+RUN apt-get -y install \
+		curl \
+		lighttpd \
+        php-cgi \
+        php-curl \
+		&& apt-get -y clean
+
+RUN cp /etc/lighttpd/conf-available/05-auth.conf /etc/lighttpd/conf-enabled/
+RUN cp /etc/lighttpd/conf-available/15-fastcgi-php.conf /etc/lighttpd/conf-enabled/
+RUN cp /etc/lighttpd/conf-available/10-fastcgi.conf /etc/lighttpd/conf-enabled/
+RUN mkdir -p /var/run/lighttpd
+RUN touch /var/run/lighttpd/php-fastcgi.socket
+RUN chown -R www-data /var/run/lighttpd
+
+ADD index.php /var/www/html
+RUN chown -R www-data /var/www/
 
 # Install Composer
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
@@ -12,4 +28,4 @@ RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local
 COPY composer.json /composer.json
 RUN composer require /composer.json
 
-CMD ["php-fpm"]
+CMD ["/usr/sbin/lighttpd", "-f", "/etc/lighttpd/lighttpd.conf"]

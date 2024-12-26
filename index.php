@@ -7,7 +7,7 @@ $client = Client::getInstance();
 /** 
  * @see JonnyW\PhantomJs\Http\Request
  **/
-$request = $client->getMessageFactory()->createRequest('http://jonnyw.me', 'GET');
+$request = $client->getMessageFactory()->createRequest('https://www.lego.com/de-de/service/buildinginstructions/7292', 'GET');
 
 /** 
  * @see JonnyW\PhantomJs\Http\Response 
