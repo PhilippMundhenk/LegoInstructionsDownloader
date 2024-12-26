@@ -11,6 +11,8 @@ RUN apt-get -y install \
         php-cgi \
         php-curl \
 		wget \
+		git \
+		unzip \
 		libfreetype6 libfreetype6-dev \
 		libfontconfig1 libfontconfig1-dev \
 		&& apt-get -y clean
