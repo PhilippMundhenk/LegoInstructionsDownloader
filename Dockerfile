@@ -10,7 +10,14 @@ RUN apt-get -y install \
 		lighttpd \
         php-cgi \
         php-curl \
+		wget \
+		libfreetype6 libfreetype6-dev \
+		libfontconfig1 libfontconfig1-dev \
 		&& apt-get -y clean
+		
+RUN cd /phantomjs && wget https://github.com/jonnnnyw/php-phantomjs/archive/refs/tags/v4.6.1.tar.gz && sudo tar xvjf v4.6.1.tar.gz
+RUN mv v4.6.1 /usr/local/share
+RUn ln -sf /usr/local/share/v4.6.1/bin/phantomjs /usr/local/bin
 
 RUN cp /etc/lighttpd/conf-available/05-auth.conf /etc/lighttpd/conf-enabled/
 RUN cp /etc/lighttpd/conf-available/15-fastcgi-php.conf /etc/lighttpd/conf-enabled/
@@ -23,9 +30,9 @@ ADD index.php /var/www/html
 RUN chown -R www-data /var/www/
 
 # Install Composer
-RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+#RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
-COPY composer.json /composer.json
-RUN composer require /composer.json
+#COPY composer.json /composer.json
+#RUN composer require "jonnyw/php-phantomjs:4.*"
 
 CMD ["/usr/sbin/lighttpd", "-f", "/etc/lighttpd/lighttpd.conf"]
