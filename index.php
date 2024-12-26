@@ -1,6 +1,7 @@
-<?php
+<?php 
 
-$homepage = file_get_contents('https://www.lego.com/de-de/service/buildinginstructions/7292');
-echo $homepage;
+$command = escapeshellcmd('/var/www/fetch.py');
+$output = shell_exec($command);
+echo $output;
 
 ?>

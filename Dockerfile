@@ -1,4 +1,4 @@
-FROM ubuntu:22.04
+FROM python:3-bookworm
 
 RUN DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get update && apt-get -y install tzdata && apt-get -y clean
 
@@ -19,7 +19,10 @@ RUN mkdir -p /var/run/lighttpd
 RUN touch /var/run/lighttpd/php-fastcgi.socket
 RUN chown -R www-data /var/run/lighttpd
 
+RUN pip install selenium
+
 ADD index.php /var/www/html
+ADD fetch.py /var/www/
 RUN chown -R www-data /var/www/
 
 CMD ["/usr/sbin/lighttpd", "-f", "/etc/lighttpd/lighttpd.conf"]
