@@ -25,4 +25,4 @@ ADD index.php /var/www/html
 ADD fetch.py /var/www/
 RUN chown -R www-data /var/www/
 
-CMD ["/usr/sbin/lighttpd", "-f", "/etc/lighttpd/lighttpd.conf"]
+CMD ["/usr/sbin/lighttpd", "-D", "-f", "/etc/lighttpd/lighttpd.conf"]
