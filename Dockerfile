@@ -33,6 +33,6 @@ RUN chown -R www-data /var/www/
 RUN curl -s http://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
 COPY composer.json /var/www/composer.json
-RUN cd /var/www && php composer.phar install
+RUN cd /var/www && php /usr/local/bin/composer install
 
 CMD ["/usr/sbin/lighttpd", "-f", "/etc/lighttpd/lighttpd.conf"]
