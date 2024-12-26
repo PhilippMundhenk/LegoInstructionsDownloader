@@ -30,7 +30,7 @@ ADD index.php /var/www/html
 RUN chown -R www-data /var/www/
 
 # Install Composer
-curl -s http://getcomposer.org/installer | php
+RUN curl -s http://getcomposer.org/installer | php
 
 COPY composer.json /var/www/composer.json
 RUN cd /var/www && php composer.phar install
