@@ -1,0 +1,4 @@
+<?php
+readfile("log.txt");
+?>
+
