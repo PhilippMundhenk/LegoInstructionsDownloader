@@ -18,6 +18,7 @@ RUN touch /var/run/lighttpd/php-fastcgi.socket
 RUN chown -R www-data /var/run/lighttpd
 
 ADD index.php /var/www/html
+ADD main.css /var/www/html
 ADD fetch.sh /var/www/html
 RUN chown -R www-data /var/www/
 RUN chmod u+x /var/www/html/fetch.sh

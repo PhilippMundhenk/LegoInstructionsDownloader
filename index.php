@@ -11,7 +11,7 @@ $error=false;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 	$set_id=$_POST['set_id'];
-	$cmd="fetch.sh";
+	$cmd="./fetch.sh";
 	if(!empty($set_id)){
 		$cmd=$cmd." \"".$set_id."\""." \"".$storage_path."\""; 
 	} else {
@@ -21,6 +21,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 	if ($_POST['action'] == 'download') {
 		exec("$cmd 2>&1", $output, $retval);
+		//TODO: Deal better with output and errors!
+		print("$output[0]");
+		print("$output[1]");
+		print("$output[2]");
+		print("$output[3]");
 	}
 }	
 ?>
