@@ -7,7 +7,7 @@ locale="de-de"
 #TODO: use existing api_key, if available
 echo "extracting API key..."
 script="$(curl -s https://www.lego.com/$locale/service/buildinginstructions/$ID | grep "scripts.min.min" | sed 's/.*\(https:.*scripts\.min\.min.*\.js\).*/\1/')"
-key="$(curl -s https://www.lego.com/service/dist/$script | grep x-api-key | sed 's/.*{headers:{"x-api-key":"\(.*\)"}};.*/\1/')"
+key="$(curl -s $script | grep x-api-key | sed 's/.*{headers:{"x-api-key":"\(.*\)"}};.*/\1/')"
 echo "retrieved API key: $key"
 echo "$key" > api_key
 
