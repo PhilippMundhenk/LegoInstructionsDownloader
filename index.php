@@ -20,7 +20,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 	}
 
 	if ($_POST['action'] == 'download') {
-		exec("$cmd 2>&1", $output, $retval);
+		exec("$cmd >log.txt 2>&1", $output, $retval);
 		if($retval != 0) {
 			$errorText="ERROR! Download(s) failed! See <a href='/log.php'>log</a> for details";
 			$error=true;
