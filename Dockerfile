@@ -24,6 +24,8 @@ ADD fetch.sh /var/www/html
 RUN chown -R www-data /var/www/
 RUN chmod u+x /var/www/html/fetch.sh
 
+PORT 80
+
 ADD start.sh /
 RUN chmod u+x start.sh
 

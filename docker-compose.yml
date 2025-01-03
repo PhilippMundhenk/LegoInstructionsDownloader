@@ -1,0 +1,17 @@
+version: '3'
+
+networks:
+  dmz_net:
+    external: true
+
+services:
+    legodownloader:
+        image: ghcr.io/philippmundhenk/legoinstructionsdownloader:latest
+        networks:
+          - dmz_net
+        environment:
+            - UID=1000 # make sure that mount is accessible for this user
+            - GID=1000 # make sure that mount is accessible for this user
+        volumes:
+            - /path/to/mount:/downloads
+        restart: none
