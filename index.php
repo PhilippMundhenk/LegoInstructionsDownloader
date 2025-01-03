@@ -21,11 +21,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 	if ($_POST['action'] == 'download') {
 		exec("$cmd 2>&1", $output, $retval);
-		//TODO: Deal better with output and errors!
-		print("$output[0]");
-		print("$output[1]");
-		print("$output[2]");
-		print("$output[3]");
+		if(!$retval) {
+			$errorText="ERROR! Download(s) failed!";
+			$error=true;
+		}
 	}
 }	
 ?>

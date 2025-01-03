@@ -8,7 +8,6 @@ RUN apt-get -y install \
 		lighttpd \
         php-cgi \
         php-curl \
-		dos2unix \
 		&& apt-get -y clean
 
 RUN cp /etc/lighttpd/conf-available/05-auth.conf /etc/lighttpd/conf-enabled/
