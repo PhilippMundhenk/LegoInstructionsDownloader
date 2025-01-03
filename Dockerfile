@@ -14,8 +14,6 @@ RUN apt-get -y install \
 RUN cp /etc/lighttpd/conf-available/05-auth.conf /etc/lighttpd/conf-enabled/
 RUN cp /etc/lighttpd/conf-available/15-fastcgi-php.conf /etc/lighttpd/conf-enabled/
 RUN cp /etc/lighttpd/conf-available/10-fastcgi.conf /etc/lighttpd/conf-enabled/
-RUN sed -i "s/\(^server.username.*\)/#\1/" /etc/lighttpd/lighttpd.conf
-RUN sed -i "s/\(^server.groupname.*\)/#\1/" /etc/lighttpd/lighttpd.conf
 RUN mkdir -p /var/run/lighttpd
 RUN touch /var/run/lighttpd/php-fastcgi.socket
 RUN chown -R www-data /var/run/lighttpd
