@@ -8,6 +8,7 @@ RUN apt-get -y install \
 		lighttpd \
         php-cgi \
         php-curl \
+		dos2unix \
 		&& apt-get -y clean
 
 RUN cp /etc/lighttpd/conf-available/05-auth.conf /etc/lighttpd/conf-enabled/
@@ -25,4 +26,7 @@ ADD fetch.sh /var/www/html
 RUN chown -R www-data /var/www/
 RUN chmod u+x /var/www/html/fetch.sh
 
-CMD ["/usr/sbin/lighttpd", "-D", "-f", "/etc/lighttpd/lighttpd.conf"]
+ADD start.sh /
+RUN chmod u+x start.sh
+
+CMD ["bash", "-c", "/start.sh"]
