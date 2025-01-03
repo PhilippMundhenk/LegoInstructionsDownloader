@@ -5,21 +5,45 @@
 <title>Lego Manager</title>
 </head>
 <?php
-$storage_path="/downloads";
 global $error;
 $error=false;
 
+function fetch($set_id) {
+	$cmd="./fetch.sh";
+	$storage_path="/downloads";
+	$cmd=$cmd." \"".$set_id."\""." \"".$storage_path."\"";
+	exec("$cmd >log.txt 2>&1", $output, $retval);
+	return $retval;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 	$set_id=$_POST['set_id'];
-	$cmd="./fetch.sh";
-	if(!empty($set_id)){
-		$cmd=$cmd." \"".$set_id."\""." \"".$storage_path."\""; 
-	} else {
-		$errorText="ERROR! No set ID given!";
-		$error=true;
-	}
-
+	
 	if ($_POST['action'] == 'download') {
+		if(!empty($set_id)){
+			if(str_contains($set_id, ";")){
+				$set_list = explode(',', $set_id);
+				foreach ($set_list as $set) {
+					if(fetch($set) != 0) {
+						$errorText="ERROR! Download(s) failed! See <a href='/log.php'>log</a> for details";
+						$error=true;
+						break;
+					}
+				}
+			}
+			else
+			{
+				if(fetch($set) != 0) {
+					$errorText="ERROR! Download(s) failed! See <a href='/log.php'>log</a> for details";
+					$error=true;
+					break;
+				}
+			}
+		} else {
+			$errorText="ERROR! No set ID given!";
+			$error=true;
+		}
+	
 		exec("$cmd >log.txt 2>&1", $output, $retval);
 		if($retval != 0) {
 			$errorText="ERROR! Download(s) failed! See <a href='/log.php'>log</a> for details";
