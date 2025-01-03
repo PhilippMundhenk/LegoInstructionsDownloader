@@ -11,5 +11,6 @@ usermod -u ${UID} www-data
 groupmod -g ${GID} www-data
 mkdir -p /downloads
 chmod 777 /downloads
-chmod 777 /var/log/lighttpd/error.log
+mkdir -p /var/log/lighttpd
+chown ${UID}:${GID} /var/log/lighttpd
 /usr/sbin/lighttpd -D -f /etc/lighttpd/lighttpd.conf
