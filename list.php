@@ -36,6 +36,7 @@ foreach ($items as $item) {
         echo "<img src='".$item."/".basename($json["hits"]["hits"][0]["_source"]["assets"][0]["assetFiles"][0]["url"])."' />";
         echo "<br/><br/>";
         echo $json["hits"]["hits"][0]["_source"]["locale"][$locale]["display_title"];
+		echo " ($set_id)";
         echo "</div>\n";
 
         echo '<div class="divTableCell">';
