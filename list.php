@@ -38,6 +38,13 @@ foreach ($items as $item) {
 
         echo '<div class="divTableCell">';
         $instructions=$json["hits"]["hits"][0]["_source"]["product_versions"][0]["building_instructions"];
+		usort($instructions, function($a, $b){
+                if($a["sequence"]["element"]>=$b["sequence"]["element"]){
+                        return true;
+                } else {
+                        return false;
+                }
+        });
         foreach ($instructions as $instr) {
                 echo "<a href=".$item."/".basename($instr["file"]["url"])."><img src=\"".$item."/".basename($instr["image"]["url"])."\" /></a>";
                 if (next($instructions)) {
