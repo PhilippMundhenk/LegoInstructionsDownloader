@@ -27,19 +27,23 @@ echo "downloading $(cat files.txt | wc -l) files..."
 #pids=()
 #i=0
 #TODO: max 10 connections!
+ret=1
 while read p; do
 #  (
-	curl --connect-timeout 5 \
-    --max-time 10 \
-    --retry 5 \
-    --retry-delay 0 \
-    --retry-max-time 40 \
-	-s -O "$p"
-	if [ $? -eq 0 ]; then
-	   echo "completed $p"
-	else
-	   echo "failed $p"
-	fi
+   while [[ $ret != 0 ]]; do
+        echo "trying $p..."
+        curl --connect-timeout 30 \
+             --retry 5 \
+             --retry-delay 5 \
+             --retry-max-time 40 \
+             -s -O "$p"
+             ret=$?
+             if [ $ret -eq 0 ]; then
+                echo "completed $p"
+             else
+                echo "failed $p"
+             fi
+   done
 #  )&
 #  pids[${i}]=$!
 #  i=$((i+1))
