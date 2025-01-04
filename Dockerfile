@@ -13,6 +13,7 @@ RUN apt-get -y install \
 RUN cp /etc/lighttpd/conf-available/05-auth.conf /etc/lighttpd/conf-enabled/
 RUN cp /etc/lighttpd/conf-available/15-fastcgi-php.conf /etc/lighttpd/conf-enabled/
 RUN cp /etc/lighttpd/conf-available/10-fastcgi.conf /etc/lighttpd/conf-enabled/
+RUN echo 'dir-listing.activate = "enable"' >> /etc/lighttpd/lighttpd.conf
 RUN mkdir -p /var/run/lighttpd
 RUN touch /var/run/lighttpd/php-fastcgi.socket
 RUN chown -R www-data /var/run/lighttpd
@@ -24,6 +25,8 @@ ADD main.css /var/www/html
 ADD fetch.sh /var/www/html
 RUN chown -R www-data /var/www/
 RUN chmod u+x /var/www/html/fetch.sh
+
+RUN ln -s /downloads /var/www/html/downloads
 
 EXPOSE 80
 
