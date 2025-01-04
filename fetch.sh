@@ -36,7 +36,7 @@ while read p; do
 		 -s -O "$p"
 		 ret=$?
 		 if [ $ret -ne 0 ]; then
-			echo "[$ID] failed $p"
+			echo "[$ID] ERROR! Failed to fetch $p"
 		 fi
   )&
 pids[${i}]=$!
