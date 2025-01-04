@@ -20,7 +20,9 @@ foreach ($items as $item) {
         $set_id=0;
         if (is_dir($item)) {
                 $set_id=str_replace("/downloads/", "", $item);
-        }
+        } else {
+			continue;
+		}
         $json="";
         $files = glob($item . '/*');
         foreach ($files as $file) {
@@ -29,7 +31,7 @@ foreach ($items as $item) {
                 }
         }
 
-        echo '<div class="divTableRow">';
+        echo '<div class="divTableRow">'."\n";
         echo '<div class="divTableCell">';
         echo "<img src='".$item."/".basename($json["hits"]["hits"][0]["_source"]["assets"][0]["assetFiles"][0]["url"])."' />";
         echo "<br/><br/>";
