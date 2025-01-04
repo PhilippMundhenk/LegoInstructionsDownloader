@@ -1,5 +1,6 @@
 <html>
 <head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="main.css">
 </head>
 <body>
@@ -14,32 +15,45 @@
 
 <?php
 $directory = '/downloads';
+$locale="de-de";
 
 $items = glob($directory . '/*');
 foreach ($items as $item) {
-        echo '<div class="divTableRow">';
+        $set_id=0;
+        echo '<div class="divTableRow">'."\n";
         if (is_dir($item)) {
                 $set_id=str_replace("/downloads/", "", $item);
-                echo "<div class='divTableCell'>{$set_id}\n</div>";
+                echo "<div class='divTableCell'>{$set_id}</div>\n";
         }
-        echo '<div class="divTableCell">';
+        $json="";
         $files = glob($item . '/*');
         foreach ($files as $file) {
-                if (is_file($file)) {
-                        if (str_contains($file, "rod")) {
-                                echo "<img src=$file />";
-                                break;
-                        }
+                if (str_ends_with($file, "data.json")) {
+                        $json=json_decode(file_get_contents($file), true);
                 }
         }
-        echo '</div>';
-        echo '</div>';
+
+        echo '<div class="divTableCell">';
+        echo "<img src='".$item."/".basename($json["hits"]["hits"][0]["_source"]["assets"][0]["assetFiles"][0]["url"])."' />";
+        echo "</div>\n";
+
+        echo '<div class="divTableCell">';
+        echo $json["hits"]["hits"][0]["_source"]["locale"][$locale]["display_title"];
+        echo "</div>\n";
+
+        echo '<div class="divTableCell">';
+        $instructions=$json["hits"]["hits"][0]["_source"]["product_versions"][0]["building_instructions"];
+        foreach ($instructions as $instr) {
+                echo "<a href=".$item."/".basename($instr["file"]["url"])."><img src=\"".$item."/".basename($instr["image"]["url"])."\" /></a>";
+                if (next($instructions)) {
+                        echo "<br/><br/>";
+                }
+        }
+        echo "</div>\n";
+        echo "</div>\n";
 }
 ?>
 
-<div class="divTableCell"></div>
-<div class="divTableCell"></div>
-</div>
 </div>
 </div>
 </body>

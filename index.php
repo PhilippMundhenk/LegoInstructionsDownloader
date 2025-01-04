@@ -70,6 +70,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 			</form>
 		<?php } ?>
 	</div>
+	
+<br/><br/>
+<?php include("list.php"); ?>
 </body>
 </html>
 

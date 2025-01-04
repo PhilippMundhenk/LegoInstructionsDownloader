@@ -150,6 +150,8 @@ body {
         border: 1px solid #999999;
         display: table-cell;
         padding: 3px 10px;
+        overflow: none;
+        vertical-align:top;
 }
 .divTableHeading {
         background-color: #EEE;
@@ -163,4 +165,8 @@ body {
 }
 .divTableBody {
         display: table-row-group;
+}
+
+img {
+        max-width: 20vw;
 }
