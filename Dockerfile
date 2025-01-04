@@ -19,6 +19,7 @@ RUN chown -R www-data /var/run/lighttpd
 
 ADD index.php /var/www/html
 ADD log.php /var/www/html
+ADD download.php /var/www/html
 ADD main.css /var/www/html
 ADD fetch.sh /var/www/html
 RUN chown -R www-data /var/www/

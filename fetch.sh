@@ -24,11 +24,11 @@ cat data.json | grep .pdf | grep url | sed "s/.*\(https:.*pdf\).*/\1/" > files.t
 cat data.json | grep .png | grep url | sed "s/.*\(https:.*png\).*/\1/" >> files.txt
 cat data.json | grep .jpg | grep url | sed "s/.*\(https:.*jpg\).*/\1/" >> files.txt
 echo "downloading $(cat files.txt | wc -l) files..."
-pids=()
-i=0
+#pids=()
+#i=0
 #TODO: max 10 connections!
 while read p; do
-  (
+#  (
 	curl --connect-timeout 5 \
     --max-time 10 \
     --retry 5 \
@@ -40,11 +40,11 @@ while read p; do
 	else
 	   echo "failed $p"
 	fi
-  )&
-  pids[${i}]=$!
-  i=$((i+1))
+#  )&
+#  pids[${i}]=$!
+#  i=$((i+1))
 done < files.txt
-for pid in ${pids[*]}; do
-    wait $pid
-done
+#for pid in ${pids[*]}; do
+#    wait $pid
+#done
 rm files.txt
