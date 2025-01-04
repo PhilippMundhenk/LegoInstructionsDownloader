@@ -26,6 +26,7 @@ cat data.json | grep .jpg | grep url | sed "s/.*\(https:.*jpg\).*/\1/" >> files.
 echo "downloading $(cat files.txt | wc -l) files..."
 pids=()
 i=0
+#TODO: max 10 connections!
 while read p; do
   (
 	curl --connect-timeout 5 \
