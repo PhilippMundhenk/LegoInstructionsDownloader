@@ -136,38 +136,39 @@ body {
 }
 
 .divTable{
-        display: table;
-        width: 100%;
+  display: table;
+  width: 100%;
+  font-family: sans-serif;
 }
 .divTableRow {
-        display: table-row;
+  display: table-row;
 }
 .divTableHeading {
-        background-color: #EEE;
-        display: table-header-group;
+  background-color: #EEE;
+  display: table-header-group;
 }
 .divTableCell, .divTableHead {
-        border: 1px solid #999999;
-        display: table-cell;
-        padding: 3px 10px;
-        overflow: none;
-        vertical-align:top;
+  border: 1px solid #15172b;
+  display: table-cell;
+  padding: 3px 10px;
+  overflow: none;
+  vertical-align:top;
 }
 .divTableHeading {
-        background-color: #EEE;
-        display: table-header-group;
-        font-weight: bold;
+  background-color: #EEE;
+  display: table-header-group;
+  font-weight: bold;
 }
 .divTableFoot {
-        background-color: #EEE;
-        display: table-footer-group;
-        font-weight: bold;
+  background-color: #EEE;
+  display: table-footer-group;
+  font-weight: bold;
 }
 .divTableBody {
-        display: table-row-group;
+  display: table-row-group;
 }
 
 img {
-        max-width: 30vw;
+  max-width: 30vw;
 		max-height: 30vw;
 }
