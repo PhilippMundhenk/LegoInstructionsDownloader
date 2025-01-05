@@ -33,7 +33,11 @@ foreach ($items as $item) {
 
         echo '<div class="divTableRow">'."\n";
         echo '<div class="divTableCell">';
-        echo "<img src='".$item."/".basename($json["hits"]["hits"][0]["_source"]["assets"][0]["assetFiles"][0]["url"])."' />";
+        $image_url=basename($json["hits"]["hits"][0]["_source"]["assets"][0]["assetFiles"][0]["url"]);
+        if ($image_url=="") {
+                $image_url=basename($json["hits"]["hits"][0]["_source"]["locale"][$locale]["additional_data"]["primary_image_grownups"]["url"]);
+        }
+        echo "<img src='".$item."/".$image_url."' />";
         echo "<br/><br/>";
         echo $json["hits"]["hits"][0]["_source"]["locale"][$locale]["display_title"];
 		echo " ($set_id)";
