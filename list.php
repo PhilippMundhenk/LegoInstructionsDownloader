@@ -81,7 +81,7 @@ foreach ($items as $item) {
 			if (str_ends_with($file, ".pdf")) {
 				$image = str_replace(".pdf", ".png", $file);
 			}
-			echo "<a href=".$item."/".$file)."><img src=\"".$item."/".$image."\" /></a>";
+			echo "<a href=".$item."/".$file."><img src=\"".$item."/".$image."\" /></a>";
 		}
 	}
         
