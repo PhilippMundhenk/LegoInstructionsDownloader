@@ -41,7 +41,8 @@ foreach ($items as $item) {
 	if ($version == 1) {
         	$image_url=basename($json["hits"]["hits"][0]["_source"]["assets"][0]["assetFiles"][0]["url"]);
 	        if ($image_url=="") {
-	                $image_url=$item."/".basename($json["hits"]["hits"][0]["_source"]["locale"][$locale]["additional_data"]["primary_image_grownups"]["url"]);
+	                $image_url=basename($json["hits"]["hits"][0]["_source"]["locale"][$locale]["additional_data"]["primary_image_grownups"]["url"]);
+			$image_url=$item."/".$image_url;
 	        }
 	} elseif ($version == 2) {
 		foreach ($files as $file) {
