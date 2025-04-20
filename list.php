@@ -25,39 +25,66 @@ foreach ($items as $item) {
 		}
         $json="";
         $files = glob($item . '/*');
+	$version = 0;
         foreach ($files as $file) {
                 if (str_ends_with($file, "data.json")) {
                         $json=json_decode(file_get_contents($file), true);
+			$version=1;
                 }
+		if (str_ends_with($file, "name.txt")) {
+			$version=2;
+		}
         }
 
         echo '<div class="divTableRow">'."\n";
         echo '<div class="divTableCell">';
-        $image_url=basename($json["hits"]["hits"][0]["_source"]["assets"][0]["assetFiles"][0]["url"]);
-        if ($image_url=="") {
-                $image_url=basename($json["hits"]["hits"][0]["_source"]["locale"][$locale]["additional_data"]["primary_image_grownups"]["url"]);
-        }
+	if ($version == 1) {
+        	$image_url=basename($json["hits"]["hits"][0]["_source"]["assets"][0]["assetFiles"][0]["url"]);
+	        if ($image_url=="") {
+	                $image_url=basename($json["hits"]["hits"][0]["_source"]["locale"][$locale]["additional_data"]["primary_image_grownups"]["url"]);
+	        }
+	} elseif ($version == 2) {
+		foreach ($files as $file) {
+			if(str_contains($file, '_Prod')) {
+				$image_url=$file;
+			}
+		}
+	}
         echo "<img src='".$item."/".$image_url."' />";
         echo "<br/><br/>";
-        echo $json["hits"]["hits"][0]["_source"]["locale"][$locale]["display_title"];
-		echo " ($set_id)";
+	if ($version == 1) {
+	        echo $json["hits"]["hits"][0]["_source"]["locale"][$locale]["display_title"];
+	} elseif ($version == 2) {
+		echo file_get_contents($item . '/name.txt');
+	}
+	echo " ($set_id)";
         echo "</div>\n";
 
         echo '<div class="divTableCell">';
-        $instructions=$json["hits"]["hits"][0]["_source"]["product_versions"][0]["building_instructions"];
+	if ($version == 1) {
+		$instructions=$json["hits"]["hits"][0]["_source"]["product_versions"][0]["building_instructions"];
 		usort($instructions, function($a, $b){
-                if($a["sequence"]["element"]>=$b["sequence"]["element"]){
-                        return true;
-                } else {
-                        return false;
-                }
-        });
-        foreach ($instructions as $instr) {
-                echo "<a href=".$item."/".basename($instr["file"]["url"])."><img src=\"".$item."/".basename($instr["image"]["url"])."\" /></a>";
-                if (next($instructions)) {
-                        echo "<br/><br/>";
-                }
-        }
+			if($a["sequence"]["element"]>=$b["sequence"]["element"]){
+				return true;
+			} else {
+				return false;
+			}
+       		});
+		foreach ($instructions as $instr) {
+	                echo "<a href=".$item."/".basename($instr["file"]["url"])."><img src=\"".$item."/".basename($instr["image"]["url"])."\" /></a>";
+	                if (next($instructions)) {
+	                        echo "<br/><br/>";
+                	}
+       		}
+	} elseif ($version == 2) {
+		foreach ($files as $file) {
+			if (str_ends_with($file, ".pdf")) {
+				$image = str_replace(".pdf", ".png", $file);
+			}
+			echo "<a href=".$item."/".$file)."><img src=\"".$item."/".$image."\" /></a>";
+		}
+	}
+        
         echo "</div>\n";
         echo "</div>\n";
 }
