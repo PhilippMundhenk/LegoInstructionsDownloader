@@ -43,7 +43,7 @@ foreach ($items as $item) {
 	        if ($image_url=="") {
 	                $image_url=basename($json["hits"]["hits"][0]["_source"]["locale"][$locale]["additional_data"]["primary_image_grownups"]["url"]);
 	        }
-		$image_url=$item."/".$image_url
+		$image_url=$item."/".$image_url;
 	} elseif ($version == 2) {
 		foreach ($files as $file) {
 			if(str_contains($file, '_Prod')) {
