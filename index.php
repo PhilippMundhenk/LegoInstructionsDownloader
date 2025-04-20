@@ -61,7 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 			<div class="cut cut-long"></div>
 			<form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post">
 	    			<div class="input-container ic1">
-	      				<input class="input" type="text" id="set_id" name="set_id" onload='this.click();' value="<?php print($set_id); ?>" placeholder="" />
+	      				<input class="input" type="text" id="set_id" name="set_id" onload='this.click();' value="" placeholder="" />
 					<div class="cut"></div>
 		      			<label for="set_id" class="placeholder">Set ID</label>
 	    			</div>
