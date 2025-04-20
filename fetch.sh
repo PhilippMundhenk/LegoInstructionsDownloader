@@ -13,6 +13,7 @@ wget https://www.lego.com/$locale/service/building-instructions/$ID
 cat $ID | grep -oP "https://www.lego.com/cdn/product-assets/product.bi.core.\w{3}/\d{7}.\w{3}" | sort -u > files.txt
 cat $ID | grep -oP "https://www.lego.com/cdn/product-assets/product.img.pri.*?\"" | sed 's/.$//' | sort -u >> files.txt
 cat $ID | grep -oP '{"name":".*?"' | sed 's/{"name":"//' | sed 's/"//' > name.txt
+cat $ID > id.txt
 echo "[$ID] downloading $(cat files.txt | wc -l) files..."
 pids=()
 i=0
