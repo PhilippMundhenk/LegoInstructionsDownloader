@@ -41,7 +41,7 @@ foreach ($items as $item) {
 	if ($version == 1) {
         	$image_url=basename($json["hits"]["hits"][0]["_source"]["assets"][0]["assetFiles"][0]["url"]);
 	        if ($image_url=="") {
-	                $image_url=basename($json["hits"]["hits"][0]["_source"]["locale"][$locale]["additional_data"]["primary_image_grownups"]["url"]);
+	                $image_url=$item."/".basename($json["hits"]["hits"][0]["_source"]["locale"][$locale]["additional_data"]["primary_image_grownups"]["url"]);
 	        }
 	} elseif ($version == 2) {
 		foreach ($files as $file) {
@@ -50,7 +50,7 @@ foreach ($items as $item) {
 			}
 		}
 	}
-        echo "<img src='".$item."/".$image_url."' />";
+        echo "<img src='".$image_url."' />";
         echo "<br/><br/>";
 	if ($version == 1) {
 	        echo $json["hits"]["hits"][0]["_source"]["locale"][$locale]["display_title"];
@@ -80,8 +80,8 @@ foreach ($items as $item) {
 		foreach ($files as $file) {
 			if (str_ends_with($file, ".pdf")) {
 				$image = str_replace(".pdf", ".png", $file);
+				echo "<a href=".$file."><img src=\"".$image."\" /></a>";
 			}
-			echo "<a href=".$item."/".$file."><img src=\"".$item."/".$image."\" /></a>";
 		}
 	}
         
