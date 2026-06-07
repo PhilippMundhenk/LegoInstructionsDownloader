@@ -36,3 +36,12 @@ jobs:
 
       - name: Static invariants on start.sh
         run: bash tests/test_start_sh.sh
+
+      - name: Static invariants on Dockerfile
+        run: bash tests/test_dockerfile.sh
+
+      - name: fetch.sh scraping regex tests
+        run: bash tests/test_fetch_regex.sh
+
+      - name: migrate.sh resilience tests
+        run: bash tests/test_migrate_resilience.sh
