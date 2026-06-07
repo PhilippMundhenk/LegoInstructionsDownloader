@@ -102,6 +102,17 @@ function parseSet(string $dir, string $publicPrefix = '/downloads'): ?array {
 
     $image = findMainImage($files, $id);
     $instructions = findInstructions($files);
+    if ($json !== null) {
+        $allowed = allowedPdfsFromJson($json);
+        if ($allowed !== null) {
+            $filtered = array_values(array_filter($instructions, function ($i) use ($allowed) {
+                return isset($allowed[$i['pdf']]);
+            }));
+            if (!empty($filtered)) {
+                $instructions = $filtered;
+            }
+        }
+    }
 
     $base = rtrim($publicPrefix, '/') . '/' . rawurlencode($id);
     return [
@@ -137,6 +148,50 @@ function extractTitleFromJson(array $json, string $id): ?string {
         }
     }
     return null;
+}
+
+/**
+ * Build the set of canonical PDF basenames from a parsed data.json so we can
+ * drop duplicate language/region copies that the scraping fetch may have
+ * downloaded. The legacy Lego API (still cached as data.json on disk for older
+ * sets) returns one entry under product_versions[] per region, each containing
+ * its own building_instructions[] — same build, different PDF per locale.
+ *
+ * We dedupe by sequence.element (1, 2, 3 …) since that identifies the build
+ * step regardless of locale; first occurrence wins. Returns null when the json
+ * has no usable product_versions structure (caller then keeps the on-disk
+ * listing untouched).
+ */
+function allowedPdfsFromJson(array $json): ?array {
+    $source = $json['hits']['hits'][0]['_source'] ?? null;
+    if (!is_array($source)) {
+        return null;
+    }
+    $versions = $source['product_versions'] ?? null;
+    if (!is_array($versions) || empty($versions)) {
+        return null;
+    }
+    $allowed = [];
+    $seenKinds = [];
+    foreach ($versions as $version) {
+        if (!is_array($version)) continue;
+        $instr = $version['building_instructions'] ?? null;
+        if (!is_array($instr)) continue;
+        foreach ($instr as $bi) {
+            if (!is_array($bi)) continue;
+            $url = $bi['file']['url'] ?? null;
+            if (!is_string($url) || $url === '') continue;
+            $base = basename($url);
+            $kind = $bi['sequence']['element'] ?? null;
+            $key = $kind !== null ? 'seq:' . (string)$kind : 'file:' . $base;
+            if (isset($seenKinds[$key])) {
+                continue;
+            }
+            $seenKinds[$key] = true;
+            $allowed[$base] = true;
+        }
+    }
+    return empty($allowed) ? null : $allowed;
 }
 
 /**

@@ -90,6 +90,85 @@ touchFile("$root/30699/6549534.png");
 touchFile("$root/30699/30699_01_BI_Build_Alt.pdf");
 touchFile("$root/30699/30699_01_BI_Build_Alt.png");
 
+/* v1 with duplicate language/region PDFs that data.json must filter down.
+ * Simulates a legacy set where the Lego API returned one product_version per
+ * region, each carrying the same build steps but locale-specific PDFs. The
+ * scraping fetch downloaded every PDF; data.json names the canonical ones. */
+$v1DupJson = [
+    'hits' => ['hits' => [[
+        '_source' => [
+            'locale' => [
+                'de-de' => ['display_title' => 'Big Set DE'],
+                'en-us' => ['display_title' => 'Big Set US'],
+            ],
+            'product_versions' => [
+                // de-de region: this is the "canonical" pick (first wins).
+                ['building_instructions' => [
+                    ['file' => ['url' => 'https://x/cdn/7000001.pdf'], 'sequence' => ['element' => 1]],
+                    ['file' => ['url' => 'https://x/cdn/7000002.pdf'], 'sequence' => ['element' => 2]],
+                ]],
+                // en-us region: same build steps, different PDFs — must be filtered out.
+                ['building_instructions' => [
+                    ['file' => ['url' => 'https://x/cdn/7000011.pdf'], 'sequence' => ['element' => 1]],
+                    ['file' => ['url' => 'https://x/cdn/7000012.pdf'], 'sequence' => ['element' => 2]],
+                ]],
+            ],
+        ],
+    ]]],
+];
+touchFile("$root/40001/data.json", json_encode($v1DupJson));
+touchFile("$root/40001/40001_Prod.jpg");
+// All four PDFs ended up on disk; we expect only the de-de pair to show.
+foreach (['7000001', '7000002', '7000011', '7000012'] as $b) {
+    touchFile("$root/40001/$b.pdf");
+    touchFile("$root/40001/$b.png");
+}
+
+/* v1 with data.json that has product_versions but none match disk PDFs.
+ * The filter must not blank the card — fall back to the on-disk listing. */
+$v1MismatchJson = [
+    'hits' => ['hits' => [[
+        '_source' => [
+            'locale' => ['de-de' => ['display_title' => 'Stale Json']],
+            'product_versions' => [
+                ['building_instructions' => [
+                    ['file' => ['url' => 'https://x/cdn/9999999.pdf'], 'sequence' => ['element' => 1]],
+                ]],
+            ],
+        ],
+    ]]],
+];
+touchFile("$root/40002/data.json", json_encode($v1MismatchJson));
+touchFile("$root/40002/40002_Prod.jpg");
+touchFile("$root/40002/8000001.pdf");
+touchFile("$root/40002/8000001.png");
+
+/* v1 where data.json lacks sequence.element — must dedupe by file basename so
+ * an entry repeated across versions isn't double-counted. */
+$v1NoSeqJson = [
+    'hits' => ['hits' => [[
+        '_source' => [
+            'locale' => ['de-de' => ['display_title' => 'No Sequence']],
+            'product_versions' => [
+                ['building_instructions' => [
+                    ['file' => ['url' => 'https://x/cdn/7100001.pdf']],
+                    ['file' => ['url' => 'https://x/cdn/7100002.pdf']],
+                ]],
+                ['building_instructions' => [
+                    ['file' => ['url' => 'https://x/cdn/7100001.pdf']], // dup basename
+                    ['file' => ['url' => 'https://x/cdn/7100003.pdf']],
+                ]],
+            ],
+        ],
+    ]]],
+];
+touchFile("$root/40003/data.json", json_encode($v1NoSeqJson));
+touchFile("$root/40003/40003_Prod.jpg");
+foreach (['7100001', '7100002', '7100003'] as $b) {
+    touchFile("$root/40003/$b.pdf");
+    touchFile("$root/40003/$b.png");
+}
+
 /* @eaDir noise: should be ignored */
 touchFile("$root/@eaDir/should_be_ignored.png");
 touchFile("$root/31099/@eaDir/some_thumb.png");
@@ -215,6 +294,71 @@ t('findInstructions handles pdf without thumb', function () {
     $instr = findInstructions($files);
     assertEq(1, count($instr));
     assertNull($instr[0]['thumb']);
+});
+
+t('data.json dedupes language/region duplicates by sequence.element', function () use ($root) {
+    $set = parseSet("$root/40001", '/d');
+    $pdfs = array_map(fn($i) => basename(rawurldecode($i['pdf'])), $set['instructions']);
+    sort($pdfs);
+    assertEq(['7000001.pdf', '7000002.pdf'], $pdfs, 'first product_version wins');
+    foreach ($set['instructions'] as $i) {
+        assertTrue($i['thumb'] !== null, 'thumb paired');
+    }
+});
+
+t('data.json filter falls back to full listing when nothing matches on disk', function () use ($root) {
+    $set = parseSet("$root/40002", '/d');
+    $pdfs = array_map(fn($i) => basename(rawurldecode($i['pdf'])), $set['instructions']);
+    assertEq(['8000001.pdf'], $pdfs, 'stale data.json must not blank the card');
+});
+
+t('data.json without sequence dedupes by file basename across versions', function () use ($root) {
+    $set = parseSet("$root/40003", '/d');
+    $pdfs = array_map(fn($i) => basename(rawurldecode($i['pdf'])), $set['instructions']);
+    sort($pdfs);
+    assertEq(['7100001.pdf', '7100002.pdf', '7100003.pdf'], $pdfs);
+});
+
+t('allowedPdfsFromJson returns null when product_versions absent', function () {
+    assertNull(allowedPdfsFromJson(['hits' => ['hits' => [['_source' => ['locale' => []]]]]]));
+    assertNull(allowedPdfsFromJson([]));
+    assertNull(allowedPdfsFromJson(['hits' => ['hits' => [['_source' => ['product_versions' => []]]]]]));
+});
+
+t('allowedPdfsFromJson keeps first sequence.element occurrence only', function () {
+    $json = ['hits' => ['hits' => [['_source' => ['product_versions' => [
+        ['building_instructions' => [
+            ['file' => ['url' => 'https://x/a.pdf'], 'sequence' => ['element' => 1]],
+            ['file' => ['url' => 'https://x/b.pdf'], 'sequence' => ['element' => 2]],
+        ]],
+        ['building_instructions' => [
+            ['file' => ['url' => 'https://x/c.pdf'], 'sequence' => ['element' => 1]],
+            ['file' => ['url' => 'https://x/d.pdf'], 'sequence' => ['element' => 2]],
+        ]],
+    ]]]]]];
+    $allowed = allowedPdfsFromJson($json);
+    assertEq(['a.pdf' => true, 'b.pdf' => true], $allowed);
+});
+
+t('allowedPdfsFromJson ignores malformed entries', function () {
+    $json = ['hits' => ['hits' => [['_source' => ['product_versions' => [
+        ['building_instructions' => [
+            ['file' => ['url' => 'https://x/a.pdf']],
+            ['file' => ['url' => '']],          // empty url skipped
+            ['file' => 'not-an-array'],         // wrong shape skipped
+            'scalar-entry',                     // not an array, skipped
+        ]],
+        ['building_instructions' => 'oops'],    // wrong shape skipped
+        'scalar-version',                       // not an array, skipped
+    ]]]]]];
+    $allowed = allowedPdfsFromJson($json);
+    assertEq(['a.pdf' => true], $allowed);
+});
+
+t('v1 single-version data.json keeps all its PDFs', function () use ($root) {
+    // The original 31099 fixture has no product_versions, so dedup is a no-op.
+    $set = parseSet("$root/31099", '/d');
+    assertEq(3, count($set['instructions']));
 });
 
 t('runFetch rejects invalid set id', function () use ($root) {
