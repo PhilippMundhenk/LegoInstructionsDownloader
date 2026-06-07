@@ -64,10 +64,9 @@ a:hover { color: var(--accent-hover); }
 }
 
 .brand-mark {
-  width: 22px;
-  height: 22px;
-  border-radius: 6px;
-  background: linear-gradient(135deg, var(--accent), #ff8b3d);
+  width: 24px;
+  height: 24px;
+  display: block;
 }
 
 .brand h1 {

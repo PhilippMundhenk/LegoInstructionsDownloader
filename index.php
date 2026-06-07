@@ -12,13 +12,13 @@ $diag = empty($sets) ? diagnoseDownloads($downloadsDir) : null;
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="main.css?v=<?= $cssVer ?>">
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%234f8cff'/%3E%3Ccircle cx='10' cy='12' r='3' fill='%23fff'/%3E%3Ccircle cx='22' cy='12' r='3' fill='%23fff'/%3E%3Crect x='4' y='17' width='24' height='11' rx='2' fill='%23ff8b3d'/%3E%3C/svg%3E">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
 <title>Lego Manager</title>
 </head>
 <body>
 <header class="topbar">
     <div class="brand">
-        <span class="brand-mark"></span>
+        <img class="brand-mark" src="favicon.svg" alt="">
         <h1>Lego Manager</h1>
     </div>
     <form id="download-form" class="download-form" autocomplete="off">

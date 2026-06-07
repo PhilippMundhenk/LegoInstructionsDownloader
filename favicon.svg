@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Brick">
+  <defs>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#6aa1ff"/>
+      <stop offset="1" stop-color="#2c5cc0"/>
+    </linearGradient>
+    <radialGradient id="stud" cx="0.32" cy="0.32" r="0.85">
+      <stop offset="0" stop-color="#a5c4ff"/>
+      <stop offset="0.55" stop-color="#4f8cff"/>
+      <stop offset="1" stop-color="#2c5cc0"/>
+    </radialGradient>
+    <radialGradient id="accent" cx="0.32" cy="0.32" r="0.85">
+      <stop offset="0" stop-color="#ffc299"/>
+      <stop offset="0.55" stop-color="#ff8b3d"/>
+      <stop offset="1" stop-color="#b85a18"/>
+    </radialGradient>
+  </defs>
+  <rect x="2" y="2" width="28" height="28" rx="5" fill="url(#body)"/>
+  <rect x="3" y="3" width="26" height="2.4" rx="2.5" fill="#ffffff" opacity="0.22"/>
+  <g>
+    <circle cx="11" cy="11" r="3.6" fill="url(#stud)"/>
+    <circle cx="21" cy="11" r="3.6" fill="url(#stud)"/>
+    <circle cx="11" cy="21" r="3.6" fill="url(#stud)"/>
+    <circle cx="21" cy="21" r="3.6" fill="url(#accent)"/>
+  </g>
+  <g fill="#ffffff" opacity="0.7">
+    <circle cx="9.7" cy="9.7" r="0.9"/>
+    <circle cx="19.7" cy="9.7" r="0.9"/>
+    <circle cx="9.7" cy="19.7" r="0.9"/>
+    <circle cx="19.7" cy="19.7" r="0.9"/>
+  </g>
+</svg>
