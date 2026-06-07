@@ -341,6 +341,55 @@ it('allowedPdfsFromJson keeps first sequence.element occurrence only', function 
     assertEq(['a.pdf' => true, 'b.pdf' => true], $allowed);
 });
 
+it('allowedPdfsFromJson dedupes multi-book core by type (42164 shape)', function () {
+    // Real Lego API shape for set 42164: two product_versions (de/us), each
+    // with a 2-book core instruction (sequence.element 1 and 2, same type).
+    // All four entries should collapse to a single core PDF.
+    $json = ['hits' => ['hits' => [['_source' => ['product_versions' => [
+        ['building_instructions' => [
+            ['file' => ['url' => 'https://x/6495257.pdf'], 'type' => 'product.bi.core',
+             'sequence' => ['total' => 2, 'element' => 1]],
+            ['file' => ['url' => 'https://x/6495258.pdf'], 'type' => 'product.bi.core',
+             'sequence' => ['total' => 2, 'element' => 2]],
+        ]],
+        ['building_instructions' => [
+            ['file' => ['url' => 'https://x/6495264.pdf'], 'type' => 'product.bi.core',
+             'sequence' => ['total' => 2, 'element' => 1]],
+            ['file' => ['url' => 'https://x/6495265.pdf'], 'type' => 'product.bi.core',
+             'sequence' => ['total' => 2, 'element' => 2]],
+        ]],
+    ]]]]]];
+    $allowed = allowedPdfsFromJson($json);
+    assertEq(['6495257.pdf' => true], $allowed);
+});
+
+it('allowedPdfsFromJson keeps core and extra builds separate (42150 shape)', function () {
+    // Real Lego API shape for set 42150: two product_versions (de/us), each
+    // with a core PDF + an "additional.extra" alt build PDF, all with
+    // sequence.element=1. Type field is what distinguishes core from alt.
+    $json = ['hits' => ['hits' => [['_source' => ['product_versions' => [
+        ['building_instructions' => [
+            ['file' => ['url' => 'https://x/6491742.pdf'], 'type' => 'product.bi.core',
+             'sequence' => ['total' => 1, 'element' => 1]],
+            ['file' => ['url' => 'https://x/42150_01_BI_Build_Alt.pdf'],
+             'type' => 'product.bi.additional.extra',
+             'sequence' => ['total' => 1, 'element' => 1]],
+        ]],
+        ['building_instructions' => [
+            ['file' => ['url' => 'https://x/6449349.pdf'], 'type' => 'product.bi.core',
+             'sequence' => ['total' => 1, 'element' => 1]],
+            ['file' => ['url' => 'https://x/42150_01_BI_Build_Alt.pdf'],
+             'type' => 'product.bi.additional.extra',
+             'sequence' => ['total' => 1, 'element' => 1]],
+        ]],
+    ]]]]]];
+    $allowed = allowedPdfsFromJson($json);
+    assertEq([
+        '6491742.pdf' => true,
+        '42150_01_BI_Build_Alt.pdf' => true,
+    ], $allowed);
+});
+
 it('allowedPdfsFromJson ignores malformed entries', function () {
     $json = ['hits' => ['hits' => [['_source' => ['product_versions' => [
         ['building_instructions' => [

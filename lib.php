@@ -160,10 +160,13 @@ function extractTitleFromJson(array $json, string $id): ?string {
  * sets) returns one entry under product_versions[] per region, each containing
  * its own building_instructions[] — same build, different PDF per locale.
  *
- * We dedupe by sequence.element (1, 2, 3 …) since that identifies the build
- * step regardless of locale; first occurrence wins. Returns null when the json
- * has no usable product_versions structure (caller then keeps the on-disk
- * listing untouched).
+ * We dedupe by the building_instruction `type` (e.g. product.bi.core vs
+ * product.bi.additional.extra) so that a multi-book core instruction collapses
+ * into a single entry while genuinely different kinds of instructions (core +
+ * alt build) remain distinct. Falls back to sequence.element, then to file
+ * basename, when `type` is absent. First occurrence wins. Returns null when
+ * the json has no usable product_versions structure (caller then keeps the
+ * on-disk listing untouched).
  */
 function allowedPdfsFromJson(array $json): ?array {
     $source = $json['hits']['hits'][0]['_source'] ?? null;
@@ -185,8 +188,15 @@ function allowedPdfsFromJson(array $json): ?array {
             $url = $bi['file']['url'] ?? null;
             if (!is_string($url) || $url === '') continue;
             $base = basename($url);
-            $kind = $bi['sequence']['element'] ?? null;
-            $key = $kind !== null ? 'seq:' . (string)$kind : 'file:' . $base;
+            $type = $bi['type'] ?? null;
+            $element = $bi['sequence']['element'] ?? null;
+            if (is_string($type) && $type !== '') {
+                $key = 'type:' . $type;
+            } elseif ($element !== null) {
+                $key = 'seq:' . (string)$element;
+            } else {
+                $key = 'file:' . $base;
+            }
             if (isset($seenKinds[$key])) {
                 continue;
             }
