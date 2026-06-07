@@ -341,10 +341,11 @@ it('allowedPdfsFromJson keeps first sequence.element occurrence only', function 
     assertEq(['a.pdf' => true, 'b.pdf' => true], $allowed);
 });
 
-it('allowedPdfsFromJson dedupes multi-book core by type (42164 shape)', function () {
+it('allowedPdfsFromJson keeps multi-book cores, drops locale dups (42164 shape)', function () {
     // Real Lego API shape for set 42164: two product_versions (de/us), each
-    // with a 2-book core instruction (sequence.element 1 and 2, same type).
-    // All four entries should collapse to a single core PDF.
+    // with a 2-book core instruction (sequence.element 1 and 2). Per-locale
+    // versions collapse onto the same (type, element) key but the two books
+    // remain distinct.
     $json = ['hits' => ['hits' => [['_source' => ['product_versions' => [
         ['building_instructions' => [
             ['file' => ['url' => 'https://x/6495257.pdf'], 'type' => 'product.bi.core',
@@ -360,7 +361,32 @@ it('allowedPdfsFromJson dedupes multi-book core by type (42164 shape)', function
         ]],
     ]]]]]];
     $allowed = allowedPdfsFromJson($json);
-    assertEq(['6495257.pdf' => true], $allowed);
+    assertEq([
+        '6495257.pdf' => true,
+        '6495258.pdf' => true,
+    ], $allowed);
+});
+
+it('allowedPdfsFromJson keeps all booklets of a 3-in-1 (31099 shape)', function () {
+    // Creator 3-in-1 sets like 31099/31134/41746 ship 3 separate booklets,
+    // all type=product.bi.core, with sequence.element 1/2/3. None of them
+    // are locale duplicates so all 3 must survive dedup.
+    $json = ['hits' => ['hits' => [['_source' => ['product_versions' => [
+        ['building_instructions' => [
+            ['file' => ['url' => 'https://x/6308552.pdf'], 'type' => 'product.bi.core',
+             'sequence' => ['total' => 3, 'element' => 1]],
+            ['file' => ['url' => 'https://x/6308553.pdf'], 'type' => 'product.bi.core',
+             'sequence' => ['total' => 3, 'element' => 2]],
+            ['file' => ['url' => 'https://x/6309236.pdf'], 'type' => 'product.bi.core',
+             'sequence' => ['total' => 3, 'element' => 3]],
+        ]],
+    ]]]]]];
+    $allowed = allowedPdfsFromJson($json);
+    assertEq([
+        '6308552.pdf' => true,
+        '6308553.pdf' => true,
+        '6309236.pdf' => true,
+    ], $allowed);
 });
 
 it('allowedPdfsFromJson keeps core and extra builds separate (42150 shape)', function () {

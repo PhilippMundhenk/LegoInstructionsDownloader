@@ -160,11 +160,14 @@ function extractTitleFromJson(array $json, string $id): ?string {
  * sets) returns one entry under product_versions[] per region, each containing
  * its own building_instructions[] — same build, different PDF per locale.
  *
- * We dedupe by the building_instruction `type` (e.g. product.bi.core vs
- * product.bi.additional.extra) so that a multi-book core instruction collapses
- * into a single entry while genuinely different kinds of instructions (core +
- * alt build) remain distinct. Falls back to sequence.element, then to file
- * basename, when `type` is absent. First occurrence wins. Returns null when
+ * Dedup key is (type, sequence.element). The `type` field distinguishes a core
+ * booklet from an alt-build pamphlet (product.bi.core vs product.bi.additional.
+ * extra) — both can carry sequence.element=1, so the type prefix prevents the
+ * alt from being collapsed into the core. The `element` field distinguishes
+ * physically separate booklets within the same type (a 3-in-1 Creator set has
+ * 3 core booklets with elements 1/2/3 — all must survive). Locale duplicates
+ * land on the same (type, element) key and are dropped; first occurrence wins.
+ * Falls back to file basename when both fields are missing. Returns null when
  * the json has no usable product_versions structure (caller then keeps the
  * on-disk listing untouched).
  */
@@ -190,10 +193,8 @@ function allowedPdfsFromJson(array $json): ?array {
             $base = basename($url);
             $type = $bi['type'] ?? null;
             $element = $bi['sequence']['element'] ?? null;
-            if (is_string($type) && $type !== '') {
-                $key = 'type:' . $type;
-            } elseif ($element !== null) {
-                $key = 'seq:' . (string)$element;
+            if ((is_string($type) && $type !== '') || $element !== null) {
+                $key = 'k:' . (is_string($type) ? $type : '') . '|' . ($element !== null ? (string)$element : '');
             } else {
                 $key = 'file:' . $base;
             }
