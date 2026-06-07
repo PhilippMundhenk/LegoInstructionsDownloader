@@ -290,6 +290,46 @@ function diagnoseDownloads(string $downloadsDir): array {
 }
 
 /**
+ * Delete a set's directory and everything inside it. The set id must match the
+ * same /^[0-9]{1,8}$/ shape we accept on download so we can never resolve to
+ * anything outside $downloadsDir. Missing set is treated as success — the
+ * caller's "remove this card" intent has already been met.
+ * Returns ['ok' => bool, 'error' => string|null].
+ */
+function removeSet(string $setId, string $downloadsDir): array {
+    $setId = trim($setId);
+    if (!preg_match('/^[0-9]{1,8}$/', $setId)) {
+        return ['ok' => false, 'error' => "Invalid set id: $setId"];
+    }
+    if (!is_dir($downloadsDir)) {
+        return ['ok' => false, 'error' => "Downloads dir does not exist"];
+    }
+    $target = $downloadsDir . '/' . $setId;
+    // Belt-and-suspenders: resolve the path and make sure it really sits under
+    // $downloadsDir before we hand it to rm. realpath() collapses any .. that
+    // somehow slipped past the regex.
+    $realDl  = realpath($downloadsDir);
+    $realTgt = realpath($target);
+    if ($realDl === false) {
+        return ['ok' => false, 'error' => "Cannot resolve downloads dir"];
+    }
+    if ($realTgt === false) {
+        return ['ok' => true, 'error' => null];
+    }
+    if (strpos($realTgt, rtrim($realDl, '/') . '/') !== 0) {
+        return ['ok' => false, 'error' => "Refusing to delete outside downloads dir"];
+    }
+    $cmd = 'rm -rf ' . escapeshellarg($realTgt) . ' 2>&1';
+    $output = [];
+    $retval = 0;
+    exec($cmd, $output, $retval);
+    if ($retval !== 0) {
+        return ['ok' => false, 'error' => 'rm failed: ' . implode("\n", $output)];
+    }
+    return ['ok' => true, 'error' => null];
+}
+
+/**
  * Spawn fetch.sh for one set, with logging to $logFile (which start.sh tails to stdout).
  * Returns ['ok' => bool, 'output' => string].
  */

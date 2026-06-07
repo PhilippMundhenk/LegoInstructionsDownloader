@@ -372,6 +372,53 @@ t('runFetch rejects too-long id', function () use ($root) {
     assertEq(false, $r['ok']);
 });
 
+t('removeSet deletes an existing set directory', function () use ($root) {
+    $id = '55501';
+    $dir = "$root/$id";
+    touchFile("$dir/name.txt", "Throwaway");
+    touchFile("$dir/$id" . "_Prod.png");
+    touchFile("$dir/6500001.pdf");
+    assertTrue(is_dir($dir), 'fixture exists pre-delete');
+    $r = removeSet($id, $root);
+    assertEq(true, $r['ok'], 'remove ok');
+    assertEq(false, is_dir($dir), 'dir gone');
+    // the parent must still be intact
+    assertTrue(is_dir($root), 'downloads root intact');
+});
+
+t('removeSet is idempotent for a missing set', function () use ($root) {
+    $r = removeSet('77777', $root);
+    assertEq(true, $r['ok'], 'missing set treated as success');
+});
+
+t('removeSet rejects shell injection in id', function () use ($root) {
+    $r = removeSet('1; rm -rf /', $root);
+    assertEq(false, $r['ok']);
+    assertTrue(str_contains((string)$r['error'], 'Invalid'), 'rejects bad id');
+});
+
+t('removeSet rejects path traversal in id', function () use ($root) {
+    // create a sibling dir we must NOT touch
+    $sibling = dirname($root) . '/lego_test_sibling_' . getmypid();
+    if (!is_dir($sibling)) mkdir($sibling, 0777, true);
+    touchFile("$sibling/keepme.txt", "important");
+    $r = removeSet('../' . basename($sibling), $root);
+    assertEq(false, $r['ok'], 'must reject traversal');
+    assertTrue(is_dir($sibling), 'sibling dir untouched');
+    assertTrue(is_file("$sibling/keepme.txt"), 'sibling file untouched');
+    exec('rm -rf ' . escapeshellarg($sibling));
+});
+
+t('removeSet rejects empty id', function () use ($root) {
+    $r = removeSet('', $root);
+    assertEq(false, $r['ok']);
+});
+
+t('removeSet fails when downloads dir missing', function () {
+    $r = removeSet('12345', '/nonexistent/lego/downloads/path');
+    assertEq(false, $r['ok']);
+});
+
 echo "\n";
 echo "$passed passed, $failed failed\n";
 
