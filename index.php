@@ -84,6 +84,9 @@ $diag = empty($sets) ? diagnoseDownloads($downloadsDir) : null;
                             <span class="dots" aria-hidden="true">&#8942;</span>
                         </button>
                         <div class="card-menu-popover" role="menu" hidden>
+                            <button class="card-menu-item card-rename"
+                                    role="menuitem"
+                                    type="button">Rename</button>
                             <?php foreach (externalLinks($set['id']) as $link): ?>
                                 <a class="card-menu-item"
                                    role="menuitem"
@@ -138,21 +141,29 @@ $diag = empty($sets) ? diagnoseDownloads($downloadsDir) : null;
     const topbar  = document.querySelector('.topbar');
 
     // Collapse the brand + download form once the user scrolls; the search
-    // row stays. 8/24 px hysteresis avoids flicker around the threshold.
+    // row stays. Big hysteresis (collapse>120, expand<40) keeps the topbar
+    // from flickering when its own height change shifts the scroll offset.
     if (topbar) {
         let collapsed = false;
-        const updateTopbar = () => {
+        let ticking = false;
+        const apply = () => {
+            ticking = false;
             const y = window.scrollY || window.pageYOffset;
-            if (!collapsed && y > 24) {
+            if (!collapsed && y > 120) {
                 topbar.classList.add('is-scrolled');
                 collapsed = true;
-            } else if (collapsed && y < 8) {
+            } else if (collapsed && y < 40) {
                 topbar.classList.remove('is-scrolled');
                 collapsed = false;
             }
         };
+        const updateTopbar = () => {
+            if (ticking) return;
+            ticking = true;
+            window.requestAnimationFrame(apply);
+        };
         window.addEventListener('scroll', updateTopbar, { passive: true });
-        updateTopbar();
+        apply();
     }
 
     function setBusy(busy) {
@@ -276,6 +287,102 @@ $diag = empty($sets) ? diagnoseDownloads($downloadsDir) : null;
             } catch (err) {
                 btn.disabled = false;
                 card.classList.remove('deleting');
+                setStatus('Network error: ' + err.message, false);
+            }
+        });
+    }
+
+    if (cards) {
+        cards.addEventListener('click', function (e) {
+            const btn = e.target.closest('.card-rename');
+            if (!btn) return;
+            closeAllMenus(null);
+            const card = btn.closest('.card');
+            if (!card) return;
+            startRename(card);
+        });
+    }
+
+    function startRename(card) {
+        const titleEl = card.querySelector('.card-title');
+        if (!titleEl || card.classList.contains('renaming')) return;
+        const original = titleEl.textContent;
+        card.classList.add('renaming');
+
+        const form = document.createElement('form');
+        form.className = 'rename-form';
+
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'rename-input';
+        input.value = original;
+        input.maxLength = 200;
+        input.setAttribute('aria-label', 'New set name');
+
+        const save = document.createElement('button');
+        save.type = 'submit';
+        save.className = 'rename-save';
+        save.textContent = 'Save';
+
+        const cancel = document.createElement('button');
+        cancel.type = 'button';
+        cancel.className = 'rename-cancel';
+        cancel.textContent = 'Cancel';
+
+        form.appendChild(input);
+        form.appendChild(save);
+        form.appendChild(cancel);
+        titleEl.replaceWith(form);
+        input.focus();
+        input.select();
+
+        const finish = (newTitle) => {
+            const h2 = document.createElement('h2');
+            h2.className = 'card-title';
+            h2.textContent = newTitle;
+            form.replaceWith(h2);
+            card.classList.remove('renaming');
+            if (newTitle !== original) {
+                card.dataset.title = newTitle.toLowerCase();
+            }
+        };
+
+        cancel.addEventListener('click', () => finish(original));
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                finish(original);
+            }
+        });
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const next = input.value.trim();
+            if (!next || next === original) { finish(original); return; }
+            save.disabled = true;
+            cancel.disabled = true;
+            input.disabled = true;
+            const id = card.dataset.id || '';
+            try {
+                const res = await fetch('rename.php', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded', 'Accept': 'application/json'},
+                    body: 'set_id=' + encodeURIComponent(id) + '&name=' + encodeURIComponent(next),
+                });
+                const data = await res.json();
+                if (data.ok) {
+                    finish(data.name || next);
+                    setStatus('Renamed set ' + id, true);
+                } else {
+                    save.disabled = false;
+                    cancel.disabled = false;
+                    input.disabled = false;
+                    setStatus(data.error || 'Rename failed.', false);
+                }
+            } catch (err) {
+                save.disabled = false;
+                cancel.disabled = false;
+                input.disabled = false;
                 setStatus('Network error: ' + err.message, false);
             }
         });

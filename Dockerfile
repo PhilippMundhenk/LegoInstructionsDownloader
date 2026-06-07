@@ -28,8 +28,11 @@ RUN chown -R www-data /var/run/lighttpd
 ADD index.php /var/www/html
 ADD log.php /var/www/html
 ADD download.php /var/www/html
+ADD delete.php /var/www/html
+ADD rename.php /var/www/html
 ADD list.php /var/www/html
 ADD main.css /var/www/html
+ADD favicon.svg /var/www/html
 ADD lib.php /var/www/html
 ADD fetch.sh /var/www/html
 ADD migrate.sh /var/www/html

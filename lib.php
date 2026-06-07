@@ -93,7 +93,10 @@ function parseSet(string $dir, string $publicPrefix = '/downloads'): ?array {
                 $title = extractTitleFromJson($decoded, $id) ?? $title;
             }
         }
-    } else {
+    }
+    // name.txt always wins when present, even on v1 sets: it's how the user
+    // renames a set from the UI and we don't want data.json to clobber it.
+    if ($hasNameTxt) {
         $name = @file_get_contents($dir . '/name.txt');
         if (is_string($name) && trim($name) !== '') {
             $title = trim($name);
@@ -353,6 +356,55 @@ function removeSet(string $setId, string $downloadsDir): array {
         return ['ok' => false, 'error' => 'rm failed: ' . implode("\n", $output)];
     }
     return ['ok' => true, 'error' => null];
+}
+
+/**
+ * Rename a set by writing a sanitized name into its name.txt. parseSet() prefers
+ * name.txt over data.json's title, so this works for both v1 (api-cached) and v2
+ * (scraped) sets without touching the underlying data.json.
+ *
+ * Sanitization: trim, collapse internal whitespace (incl. newlines and tabs)
+ * into single spaces, strip control chars, cap at 200 chars. Empty after
+ * sanitizing is rejected — use removeSet to delete a set.
+ *
+ * Returns ['ok' => bool, 'error' => string|null, 'name' => string|null].
+ */
+function renameSet(string $setId, string $name, string $downloadsDir): array {
+    $setId = trim($setId);
+    if (!preg_match('/^[0-9]{1,8}$/', $setId)) {
+        return ['ok' => false, 'error' => "Invalid set id: $setId", 'name' => null];
+    }
+    if (!is_dir($downloadsDir)) {
+        return ['ok' => false, 'error' => "Downloads dir does not exist", 'name' => null];
+    }
+    $target = $downloadsDir . '/' . $setId;
+    $realDl  = realpath($downloadsDir);
+    $realTgt = realpath($target);
+    if ($realDl === false || $realTgt === false) {
+        return ['ok' => false, 'error' => "Set not found", 'name' => null];
+    }
+    if (strpos($realTgt, rtrim($realDl, '/') . '/') !== 0) {
+        return ['ok' => false, 'error' => "Refusing to write outside downloads dir", 'name' => null];
+    }
+    if (!is_dir($realTgt)) {
+        return ['ok' => false, 'error' => "Set directory missing", 'name' => null];
+    }
+    // Order matters: collapse whitespace (incl. \n, \t) first so they become
+    // spaces, then strip remaining non-whitespace control chars.
+    $clean = preg_replace('/\s+/u', ' ', $name);
+    $clean = preg_replace('/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/u', '', (string)$clean);
+    $clean = trim((string)$clean);
+    if ($clean === '') {
+        return ['ok' => false, 'error' => 'Name cannot be empty', 'name' => null];
+    }
+    if (mb_strlen($clean) > 200) {
+        $clean = mb_substr($clean, 0, 200);
+    }
+    $path = $realTgt . '/name.txt';
+    if (@file_put_contents($path, $clean . "\n") === false) {
+        return ['ok' => false, 'error' => 'Could not write name.txt', 'name' => null];
+    }
+    return ['ok' => true, 'error' => null, 'name' => $clean];
 }
 
 /**

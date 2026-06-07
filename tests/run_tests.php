@@ -439,6 +439,78 @@ t('externalLinks rejects bad ids', function () {
     assertEq([], externalLinks('123456789')); // too long
 });
 
+t('renameSet writes name.txt and parseSet picks it up over data.json', function () use ($root) {
+    $id = '60001';
+    touchFile("$root/$id/data.json", json_encode([
+        'hits' => ['hits' => [['_source' => ['locale' => ['en-us' => ['display_title' => 'Original Title']]]]]],
+    ]));
+    touchFile("$root/$id/$id" . "_Prod.png");
+    $set = parseSet("$root/$id", '/d');
+    assertEq('Original Title', $set['title'], 'pre-rename');
+    $r = renameSet($id, "My Custom Name", $root);
+    assertEq(true, $r['ok'], 'rename ok');
+    assertEq('My Custom Name', $r['name']);
+    $set2 = parseSet("$root/$id", '/d');
+    assertEq('My Custom Name', $set2['title'], 'name.txt overrides data.json');
+});
+
+t('renameSet sanitizes whitespace and trims length', function () use ($root) {
+    $id = '60002';
+    touchFile("$root/$id/name.txt", "old");
+    $r = renameSet($id, "  multi\nline\tname   ", $root);
+    assertEq(true, $r['ok']);
+    assertEq('multi line name', $r['name'], 'newlines and tabs collapse to spaces');
+
+    $long = str_repeat('a', 500);
+    $r2 = renameSet($id, $long, $root);
+    assertEq(true, $r2['ok']);
+    assertEq(200, mb_strlen($r2['name']), 'capped at 200');
+});
+
+t('renameSet strips control characters', function () use ($root) {
+    $id = '60003';
+    touchFile("$root/$id/name.txt", "old");
+    $r = renameSet($id, "Hello\x00\x07World", $root);
+    assertEq(true, $r['ok']);
+    assertEq('HelloWorld', $r['name']);
+});
+
+t('renameSet rejects empty/whitespace-only name', function () use ($root) {
+    $id = '60004';
+    touchFile("$root/$id/name.txt", "keep me");
+    $r = renameSet($id, "   \n\t  ", $root);
+    assertEq(false, $r['ok'], 'must reject empty');
+    assertTrue(str_contains((string)$r['error'], 'empty'), 'error mentions empty');
+    // original name file untouched
+    assertEq("keep me", trim((string)file_get_contents("$root/$id/name.txt")));
+});
+
+t('renameSet rejects invalid set id', function () use ($root) {
+    $r = renameSet('1; rm -rf /', 'whatever', $root);
+    assertEq(false, $r['ok']);
+    assertTrue(str_contains((string)$r['error'], 'Invalid'), 'rejects bad id');
+});
+
+t('renameSet rejects path traversal', function () use ($root) {
+    $sibling = dirname($root) . '/lego_test_rn_sibling_' . getmypid();
+    if (!is_dir($sibling)) mkdir($sibling, 0777, true);
+    touchFile("$sibling/name.txt", "do not overwrite");
+    $r = renameSet('../' . basename($sibling), 'pwned', $root);
+    assertEq(false, $r['ok'], 'must reject traversal');
+    assertEq('do not overwrite', trim((string)file_get_contents("$sibling/name.txt")), 'sibling untouched');
+    exec('rm -rf ' . escapeshellarg($sibling));
+});
+
+t('renameSet fails for missing set', function () use ($root) {
+    $r = renameSet('88888', 'irrelevant', $root);
+    assertEq(false, $r['ok'], 'missing set must fail');
+});
+
+t('renameSet fails when downloads dir missing', function () {
+    $r = renameSet('12345', 'name', '/nonexistent/lego/path');
+    assertEq(false, $r['ok']);
+});
+
 echo "\n";
 echo "$passed passed, $failed failed\n";
 
