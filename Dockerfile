@@ -1,44 +1,47 @@
-FROM debian:bookworm-slim
+FROM python:3-bookworm
 
 ENV DEBIAN_FRONTEND=noninteractive \
     TZ=Etc/UTC \
     LEGO_LOG_FILE=/var/log/lego.log \
     DOWNLOADS_DIR=/downloads
 
-RUN apt-get update \
- && apt-get -y install --no-install-recommends \
-        tzdata \
-        ca-certificates \
+RUN apt-get update && apt-get -y install tzdata && apt-get -y clean
+
+RUN apt-get -y update && apt-get -y upgrade && apt-get -y clean
+RUN apt-get -y install \
         curl \
         wget \
-        grep \
-        sed \
-        coreutils \
         lighttpd \
         php-cgi \
         php-curl \
         php-mbstring \
- && apt-get -y clean \
- && rm -rf /var/lib/apt/lists/*
+        && apt-get -y clean
 
-RUN cp /etc/lighttpd/conf-available/15-fastcgi-php.conf /etc/lighttpd/conf-enabled/ \
- && cp /etc/lighttpd/conf-available/10-fastcgi.conf       /etc/lighttpd/conf-enabled/ \
- && sed -i 's|"index.html"|"index.php", "index.html"|' /etc/lighttpd/lighttpd.conf \
- && mkdir -p /var/run/lighttpd \
- && touch /var/run/lighttpd/php-fastcgi.socket \
- && chown -R www-data /var/run/lighttpd
+RUN cp /etc/lighttpd/conf-available/05-auth.conf /etc/lighttpd/conf-enabled/
+RUN cp /etc/lighttpd/conf-available/15-fastcgi-php.conf /etc/lighttpd/conf-enabled/
+RUN cp /etc/lighttpd/conf-available/10-fastcgi.conf /etc/lighttpd/conf-enabled/
+RUN echo 'dir-listing.activate = "enable"' >> /etc/lighttpd/lighttpd.conf
+RUN mkdir -p /var/run/lighttpd
+RUN touch /var/run/lighttpd/php-fastcgi.socket
+RUN chown -R www-data /var/run/lighttpd
 
-COPY index.php list.php log.php download.php main.css lib.php /var/www/html/
-COPY fetch.sh /var/www/html/
-RUN chown -R www-data:www-data /var/www/ \
- && chmod u+x /var/www/html/fetch.sh \
- && ln -s /downloads /var/www/html/downloads
+ADD index.php /var/www/html
+ADD log.php /var/www/html
+ADD download.php /var/www/html
+ADD list.php /var/www/html
+ADD main.css /var/www/html
+ADD lib.php /var/www/html
+ADD fetch.sh /var/www/html
+RUN chown -R www-data /var/www/
+RUN chmod u+x /var/www/html/fetch.sh
+
+RUN ln -s /downloads /var/www/html/downloads
 
 EXPOSE 80
 
-COPY start.sh /
-RUN chmod u+x /start.sh
+ADD start.sh /
+RUN chmod u+x start.sh
 
 HEALTHCHECK --interval=30s --timeout=5s CMD curl -fsS http://localhost/ >/dev/null || exit 1
 
-CMD ["/start.sh"]
+CMD ["bash", "-c", "/start.sh"]

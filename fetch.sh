@@ -45,9 +45,19 @@ FILES_LIST="$(mktemp)"
 RESULTS_DIR="$(mktemp -d)"
 trap 'rm -f "$FILES_LIST"; rm -rf "$RESULTS_DIR"' EXIT
 
+# Building instructions: strict pattern, very stable.
 grep -oP "https://www.lego.com/cdn/product-assets/product.bi.core.\w{3}/\d{7}.\w{3}" "$ID" | sort -u >  "$FILES_LIST"
-grep -oP "https://www.lego.com/cdn/product-assets/product.img.pri.*?\"" "$ID" | sed 's/.$//' | sort -u >> "$FILES_LIST"
-grep -oP '{"name":".*?"' "$ID" | head -n1 | sed 's/{"name":"//' | sed 's/"//' > name.txt
+# Product images: Lego embeds these inside srcset="url1?q=… 1x, url2?q=… 2x, …",
+# so we stop at the first " ? & space , or quote to keep just the clean URL.
+grep -oP 'https://www\.lego\.com/cdn/product-assets/product\.img\.pri/[^"?\s,&]+' "$ID" | sort -u >> "$FILES_LIST"
+# Set title sits next to "setNumber":"<ID>" in the embedded JSON. Anchor on that
+# to avoid grabbing category/badge names like "Neu" or "SMART Play".
+NAME=$(grep -oP '"name":"[^"]+","setNumber":"'"$ID"'"' "$ID" | head -n1 | sed 's/.*"name":"\([^"]*\)".*/\1/')
+if [[ -z "$NAME" ]]; then
+    # Fallback: og:title meta (still better than the first "name" hit).
+    NAME=$(grep -oP '<meta property="og:title" content="[^"]+"' "$ID" | head -n1 | sed 's/.*content="\([^"]*\)".*/\1/')
+fi
+printf '%s\n' "$NAME" > name.txt
 # id.txt is kept for compatibility with older listings that consumed it
 cp "$ID" id.txt
 
@@ -55,7 +65,16 @@ COUNT=$(wc -l < "$FILES_LIST" | tr -d ' ')
 log "discovered $COUNT asset URLs"
 
 if [[ "$COUNT" -eq 0 ]]; then
-    log "WARN: no asset URLs found — Lego page format may have changed"
+    log "ERROR: no asset URLs found — set may be retired or Lego page format changed"
+    # If the only content in this directory is what we just created
+    # (raw index, id.txt, name.txt), clean up to avoid an empty card.
+    leftover=$(find "$TARGET" -mindepth 1 -maxdepth 1 \
+        ! -name "$ID" ! -name id.txt ! -name name.txt | head -n1)
+    if [[ -z "$leftover" ]]; then
+        log "removing empty set directory"
+        cd "$DIR" && rm -rf "$TARGET"
+    fi
+    exit 5
 fi
 
 FAILED=0
