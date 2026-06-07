@@ -34,6 +34,8 @@ ADD list.php /var/www/html
 ADD main.css /var/www/html
 ADD favicon.svg /var/www/html
 ADD lib.php /var/www/html
+ADD i18n.php /var/www/html
+ADD i18n /var/www/html/i18n
 ADD fetch.sh /var/www/html
 ADD migrate.sh /var/www/html
 RUN chown -R www-data /var/www/

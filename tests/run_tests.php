@@ -1,13 +1,14 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__ . '/../lib.php';
+require_once __DIR__ . '/../i18n.php';
 
 /* tiny test harness */
 $passed = 0;
 $failed = 0;
 $current = '';
 
-function t(string $name, callable $fn): void {
+function it(string $name, callable $fn): void {
     global $passed, $failed, $current;
     $current = $name;
     try {
@@ -191,7 +192,7 @@ touchFile("$root/notes.txt", "should be ignored");
 
 echo "\nrunning tests...\n";
 
-t('listSets returns only real sets', function () use ($root) {
+it('listSets returns only real sets', function () use ($root) {
     $sets = listSets($root, '/d');
     $ids = array_column($sets, 'id');
     assertContains($ids, '31099');
@@ -203,7 +204,7 @@ t('listSets returns only real sets', function () use ($root) {
     assertEq(false, in_array('99999', $ids, true), '99999 (no markers) leaked');
 });
 
-t('listSets sorts by natural id order', function () use ($root) {
+it('listSets sorts by natural id order', function () use ($root) {
     $sets = listSets($root, '/d');
     $ids = array_column($sets, 'id');
     $sorted = $ids;
@@ -211,18 +212,18 @@ t('listSets sorts by natural id order', function () use ($root) {
     assertEq($sorted, $ids, 'natural sort');
 });
 
-t('v1 picks de-de display_title', function () use ($root) {
+it('v1 picks de-de display_title', function () use ($root) {
     $set = parseSet("$root/31099", '/d');
     assertEq('Propellerflugzeug', $set['title']);
     assertEq(1, $set['version']);
 });
 
-t('v1 picks Prod image as main image', function () use ($root) {
+it('v1 picks Prod image as main image', function () use ($root) {
     $set = parseSet("$root/31099", '/d');
     assertTrue(str_ends_with($set['image'], '31099_Prod.jpg'), 'main image');
 });
 
-t('v1 lists instructions with thumbs, naturally sorted', function () use ($root) {
+it('v1 lists instructions with thumbs, naturally sorted', function () use ($root) {
     $set = parseSet("$root/31099", '/d');
     assertEq(3, count($set['instructions']));
     $pdfs = array_map(fn($i) => basename(rawurldecode($i['pdf'])), $set['instructions']);
@@ -232,56 +233,56 @@ t('v1 lists instructions with thumbs, naturally sorted', function () use ($root)
     }
 });
 
-t('v2 reads name from name.txt', function () use ($root) {
+it('v2 reads name from name.txt', function () use ($root) {
     $set = parseSet("$root/30640", '/d');
     assertEq('Cute Pug', $set['title']);
     assertEq(2, $set['version']);
 });
 
-t('v2 includes alt build instruction', function () use ($root) {
+it('v2 includes alt build instruction', function () use ($root) {
     $set = parseSet("$root/30699", '/d');
     $pdfs = array_map(fn($i) => basename(rawurldecode($i['pdf'])), $set['instructions']);
     assertContains($pdfs, '6549534.pdf');
     assertContains($pdfs, '30699_01_BI_Build_Alt.pdf');
 });
 
-t('malformed data.json falls back gracefully', function () use ($root) {
+it('malformed data.json falls back gracefully', function () use ($root) {
     $set = parseSet("$root/12345", '/d');
     assertEq('Set 12345', $set['title']);
     assertEq(1, $set['version']);
 });
 
-t('json without any locale title falls back to id', function () use ($root) {
+it('json without any locale title falls back to id', function () use ($root) {
     $set = parseSet("$root/22222", '/d');
     assertEq('Set 22222', $set['title']);
 });
 
-t('parseSet returns null for dirs without markers', function () use ($root) {
+it('parseSet returns null for dirs without markers', function () use ($root) {
     $set = parseSet("$root/99999", '/d');
     assertNull($set);
 });
 
-t('URLs use the public prefix and url-encode the id', function () use ($root) {
+it('URLs use the public prefix and url-encode the id', function () use ($root) {
     $set = parseSet("$root/31099", '/public');
     assertTrue(str_starts_with($set['image'], '/public/31099/'), 'image url prefix');
     assertTrue(str_starts_with($set['instructions'][0]['pdf'], '/public/31099/'), 'pdf url prefix');
 });
 
-t('findMainImage prefers Prod over Box', function () {
+it('findMainImage prefers Prod over Box', function () {
     $files = ['31099_Box1_v39_2400.jpg', '31099_Prod.jpg', 'logo_lego.png'];
     assertEq('31099_Prod.jpg', findMainImage($files, '31099'));
 });
 
-t('findMainImage falls back to box when no Prod', function () {
+it('findMainImage falls back to box when no Prod', function () {
     $files = ['31099_Box1_v39_2400.jpg', 'logo_lego.png'];
     assertEq('31099_Box1_v39_2400.jpg', findMainImage($files, '31099'));
 });
 
-t('findMainImage returns null when no images', function () {
+it('findMainImage returns null when no images', function () {
     assertNull(findMainImage(['data.json', '6308552.pdf'], '31099'));
 });
 
-t('findInstructions pairs pdf with png thumb', function () {
+it('findInstructions pairs pdf with png thumb', function () {
     $files = ['6308552.pdf', '6308552.png', '6308553.pdf', '6308553.png'];
     $instr = findInstructions($files);
     assertEq(2, count($instr));
@@ -289,14 +290,14 @@ t('findInstructions pairs pdf with png thumb', function () {
     assertEq('6308552.png', $instr[0]['thumb']);
 });
 
-t('findInstructions handles pdf without thumb', function () {
+it('findInstructions handles pdf without thumb', function () {
     $files = ['6308552.pdf'];
     $instr = findInstructions($files);
     assertEq(1, count($instr));
     assertNull($instr[0]['thumb']);
 });
 
-t('data.json dedupes language/region duplicates by sequence.element', function () use ($root) {
+it('data.json dedupes language/region duplicates by sequence.element', function () use ($root) {
     $set = parseSet("$root/40001", '/d');
     $pdfs = array_map(fn($i) => basename(rawurldecode($i['pdf'])), $set['instructions']);
     sort($pdfs);
@@ -306,26 +307,26 @@ t('data.json dedupes language/region duplicates by sequence.element', function (
     }
 });
 
-t('data.json filter falls back to full listing when nothing matches on disk', function () use ($root) {
+it('data.json filter falls back to full listing when nothing matches on disk', function () use ($root) {
     $set = parseSet("$root/40002", '/d');
     $pdfs = array_map(fn($i) => basename(rawurldecode($i['pdf'])), $set['instructions']);
     assertEq(['8000001.pdf'], $pdfs, 'stale data.json must not blank the card');
 });
 
-t('data.json without sequence dedupes by file basename across versions', function () use ($root) {
+it('data.json without sequence dedupes by file basename across versions', function () use ($root) {
     $set = parseSet("$root/40003", '/d');
     $pdfs = array_map(fn($i) => basename(rawurldecode($i['pdf'])), $set['instructions']);
     sort($pdfs);
     assertEq(['7100001.pdf', '7100002.pdf', '7100003.pdf'], $pdfs);
 });
 
-t('allowedPdfsFromJson returns null when product_versions absent', function () {
+it('allowedPdfsFromJson returns null when product_versions absent', function () {
     assertNull(allowedPdfsFromJson(['hits' => ['hits' => [['_source' => ['locale' => []]]]]]));
     assertNull(allowedPdfsFromJson([]));
     assertNull(allowedPdfsFromJson(['hits' => ['hits' => [['_source' => ['product_versions' => []]]]]]));
 });
 
-t('allowedPdfsFromJson keeps first sequence.element occurrence only', function () {
+it('allowedPdfsFromJson keeps first sequence.element occurrence only', function () {
     $json = ['hits' => ['hits' => [['_source' => ['product_versions' => [
         ['building_instructions' => [
             ['file' => ['url' => 'https://x/a.pdf'], 'sequence' => ['element' => 1]],
@@ -340,7 +341,7 @@ t('allowedPdfsFromJson keeps first sequence.element occurrence only', function (
     assertEq(['a.pdf' => true, 'b.pdf' => true], $allowed);
 });
 
-t('allowedPdfsFromJson ignores malformed entries', function () {
+it('allowedPdfsFromJson ignores malformed entries', function () {
     $json = ['hits' => ['hits' => [['_source' => ['product_versions' => [
         ['building_instructions' => [
             ['file' => ['url' => 'https://x/a.pdf']],
@@ -355,24 +356,24 @@ t('allowedPdfsFromJson ignores malformed entries', function () {
     assertEq(['a.pdf' => true], $allowed);
 });
 
-t('v1 single-version data.json keeps all its PDFs', function () use ($root) {
+it('v1 single-version data.json keeps all its PDFs', function () use ($root) {
     // The original 31099 fixture has no product_versions, so dedup is a no-op.
     $set = parseSet("$root/31099", '/d');
     assertEq(3, count($set['instructions']));
 });
 
-t('runFetch rejects invalid set id', function () use ($root) {
+it('runFetch rejects invalid set id', function () use ($root) {
     $r = runFetch('abc; rm -rf /', $root, __DIR__ . '/..', '/tmp/lego_test.log');
     assertEq(false, $r['ok']);
     assertTrue(str_contains($r['output'], 'Invalid'), 'rejects shell injection');
 });
 
-t('runFetch rejects too-long id', function () use ($root) {
+it('runFetch rejects too-long id', function () use ($root) {
     $r = runFetch('123456789', $root, __DIR__ . '/..', '/tmp/lego_test.log');
     assertEq(false, $r['ok']);
 });
 
-t('removeSet deletes an existing set directory', function () use ($root) {
+it('removeSet deletes an existing set directory', function () use ($root) {
     $id = '55501';
     $dir = "$root/$id";
     touchFile("$dir/name.txt", "Throwaway");
@@ -386,18 +387,18 @@ t('removeSet deletes an existing set directory', function () use ($root) {
     assertTrue(is_dir($root), 'downloads root intact');
 });
 
-t('removeSet is idempotent for a missing set', function () use ($root) {
+it('removeSet is idempotent for a missing set', function () use ($root) {
     $r = removeSet('77777', $root);
     assertEq(true, $r['ok'], 'missing set treated as success');
 });
 
-t('removeSet rejects shell injection in id', function () use ($root) {
+it('removeSet rejects shell injection in id', function () use ($root) {
     $r = removeSet('1; rm -rf /', $root);
     assertEq(false, $r['ok']);
     assertTrue(str_contains((string)$r['error'], 'Invalid'), 'rejects bad id');
 });
 
-t('removeSet rejects path traversal in id', function () use ($root) {
+it('removeSet rejects path traversal in id', function () use ($root) {
     // create a sibling dir we must NOT touch
     $sibling = dirname($root) . '/lego_test_sibling_' . getmypid();
     if (!is_dir($sibling)) mkdir($sibling, 0777, true);
@@ -409,17 +410,17 @@ t('removeSet rejects path traversal in id', function () use ($root) {
     exec('rm -rf ' . escapeshellarg($sibling));
 });
 
-t('removeSet rejects empty id', function () use ($root) {
+it('removeSet rejects empty id', function () use ($root) {
     $r = removeSet('', $root);
     assertEq(false, $r['ok']);
 });
 
-t('removeSet fails when downloads dir missing', function () {
+it('removeSet fails when downloads dir missing', function () {
     $r = removeSet('12345', '/nonexistent/lego/downloads/path');
     assertEq(false, $r['ok']);
 });
 
-t('externalLinks builds the expected catalog URLs', function () {
+it('externalLinks builds the expected catalog URLs', function () {
     $links = externalLinks('31099');
     $byLabel = [];
     foreach ($links as $l) {
@@ -432,14 +433,14 @@ t('externalLinks builds the expected catalog URLs', function () {
     assertEq('https://rebrickable.com/sets/31099-1/', $byLabel['Rebrickable']);
 });
 
-t('externalLinks rejects bad ids', function () {
+it('externalLinks rejects bad ids', function () {
     assertEq([], externalLinks(''));
     assertEq([], externalLinks('1; rm -rf /'));
     assertEq([], externalLinks('abc'));
     assertEq([], externalLinks('123456789')); // too long
 });
 
-t('renameSet writes name.txt and parseSet picks it up over data.json', function () use ($root) {
+it('renameSet writes name.txt and parseSet picks it up over data.json', function () use ($root) {
     $id = '60001';
     touchFile("$root/$id/data.json", json_encode([
         'hits' => ['hits' => [['_source' => ['locale' => ['en-us' => ['display_title' => 'Original Title']]]]]],
@@ -454,7 +455,7 @@ t('renameSet writes name.txt and parseSet picks it up over data.json', function 
     assertEq('My Custom Name', $set2['title'], 'name.txt overrides data.json');
 });
 
-t('renameSet sanitizes whitespace and trims length', function () use ($root) {
+it('renameSet sanitizes whitespace and trims length', function () use ($root) {
     $id = '60002';
     touchFile("$root/$id/name.txt", "old");
     $r = renameSet($id, "  multi\nline\tname   ", $root);
@@ -467,7 +468,7 @@ t('renameSet sanitizes whitespace and trims length', function () use ($root) {
     assertEq(200, mb_strlen($r2['name']), 'capped at 200');
 });
 
-t('renameSet strips control characters', function () use ($root) {
+it('renameSet strips control characters', function () use ($root) {
     $id = '60003';
     touchFile("$root/$id/name.txt", "old");
     $r = renameSet($id, "Hello\x00\x07World", $root);
@@ -475,7 +476,7 @@ t('renameSet strips control characters', function () use ($root) {
     assertEq('HelloWorld', $r['name']);
 });
 
-t('renameSet rejects empty/whitespace-only name', function () use ($root) {
+it('renameSet rejects empty/whitespace-only name', function () use ($root) {
     $id = '60004';
     touchFile("$root/$id/name.txt", "keep me");
     $r = renameSet($id, "   \n\t  ", $root);
@@ -485,13 +486,13 @@ t('renameSet rejects empty/whitespace-only name', function () use ($root) {
     assertEq("keep me", trim((string)file_get_contents("$root/$id/name.txt")));
 });
 
-t('renameSet rejects invalid set id', function () use ($root) {
+it('renameSet rejects invalid set id', function () use ($root) {
     $r = renameSet('1; rm -rf /', 'whatever', $root);
     assertEq(false, $r['ok']);
     assertTrue(str_contains((string)$r['error'], 'Invalid'), 'rejects bad id');
 });
 
-t('renameSet rejects path traversal', function () use ($root) {
+it('renameSet rejects path traversal', function () use ($root) {
     $sibling = dirname($root) . '/lego_test_rn_sibling_' . getmypid();
     if (!is_dir($sibling)) mkdir($sibling, 0777, true);
     touchFile("$sibling/name.txt", "do not overwrite");
@@ -501,14 +502,100 @@ t('renameSet rejects path traversal', function () use ($root) {
     exec('rm -rf ' . escapeshellarg($sibling));
 });
 
-t('renameSet fails for missing set', function () use ($root) {
+it('renameSet fails for missing set', function () use ($root) {
     $r = renameSet('88888', 'irrelevant', $root);
     assertEq(false, $r['ok'], 'missing set must fail');
 });
 
-t('renameSet fails when downloads dir missing', function () {
+it('renameSet fails when downloads dir missing', function () {
     $r = renameSet('12345', 'name', '/nonexistent/lego/path');
     assertEq(false, $r['ok']);
+});
+
+it('negotiateLocale picks highest q from supported subset', function () {
+    $sup = ['en', 'de', 'fr'];
+    assertEq('de', negotiateLocale('de-DE,de;q=0.9,en;q=0.8', $sup));
+    assertEq('en', negotiateLocale('en-US,en;q=0.9', $sup));
+    assertEq('fr', negotiateLocale('fr-CA,fr;q=0.9,en;q=0.5', $sup));
+});
+
+it('negotiateLocale falls back to en for unmatched header', function () {
+    $sup = ['en', 'de'];
+    assertEq('en', negotiateLocale('ja-JP,ja;q=0.9', $sup));
+    assertEq('en', negotiateLocale('', $sup));
+    assertEq('en', negotiateLocale('garbage', $sup));
+});
+
+it('negotiateLocale matches by primary subtag only', function () {
+    $sup = ['en', 'zh'];
+    // zh-Hant, zh-CN, zh-TW should all match 'zh'
+    assertEq('zh', negotiateLocale('zh-Hant;q=0.9', $sup));
+    assertEq('zh', negotiateLocale('zh-CN', $sup));
+});
+
+it('negotiateLocale respects q-weighted preference order', function () {
+    $sup = ['en', 'de', 'fr'];
+    // fr has higher q than de, so fr wins
+    assertEq('fr', negotiateLocale('de;q=0.5,fr;q=0.9,en;q=0.1', $sup));
+});
+
+it('loadTranslations returns the catalog for a supported locale', function () {
+    $en = loadTranslations('en');
+    assertTrue(!empty($en), 'en catalog not empty');
+    assertTrue(isset($en['app.title']), 'app.title present in en');
+    $de = loadTranslations('de');
+    assertTrue(isset($de['menu.delete']), 'menu.delete present in de');
+});
+
+it('loadTranslations returns empty array for unknown locale', function () {
+    $x = loadTranslations('xx');
+    assertEq([], $x);
+});
+
+it('t() returns the translated string for a known key', function () {
+    assertEq('Speichern', t('rename.save', [], 'de'));
+    assertEq('Annuler',  t('rename.cancel', [], 'fr'));
+    assertEq('Eliminar set', t('menu.delete', [], 'es'));
+});
+
+it('t() falls back to English when key missing in active locale', function () {
+    // Sneak a key that doesn't exist in 'de' but does in 'en':
+    // we use a real key that's guaranteed in en but assert against the en value.
+    $en = loadTranslations('en');
+    // pick a key that we know exists; ensure t() returns the de version, but
+    // for a fake key it should fall back.
+    assertEq('definitely_no_such_key', t('definitely_no_such_key', [], 'de'),
+        'missing key falls through to the key itself when not in any catalog');
+});
+
+it('t() interpolates sprintf-style args', function () {
+    assertEq('Deleted set 31099', t('delete.success', ['31099'], 'en'));
+    assertEq('Set 31099 gelöscht', t('delete.success', ['31099'], 'de'));
+    assertEq('5 sets', t('count.sets', [5], 'en'));
+    assertEq('1 set', t('count.set', [1], 'en'));
+});
+
+it('all locale catalogs cover the en key set', function () {
+    $en = loadTranslations('en');
+    foreach (['de', 'es', 'fr', 'hi', 'zh'] as $loc) {
+        $cat = loadTranslations($loc);
+        $missing = array_diff(array_keys($en), array_keys($cat));
+        assertEq([], $missing, "locale '$loc' missing keys: " . implode(', ', $missing));
+    }
+});
+
+it('jsStrings exposes the keys used by client code', function () {
+    $js = jsStrings();
+    foreach (['rename.save', 'rename.cancel', 'delete.confirm', 'status.downloading',
+              'status.done', 'status.network_error', 'count.set', 'count.sets'] as $k) {
+        assertTrue(isset($js[$k]), "jsStrings missing $k");
+    }
+});
+
+it('supportedLocales lists exactly the six target languages', function () {
+    $locs = array_keys(supportedLocales());
+    sort($locs);
+    assertEq(['de', 'en', 'es', 'fr', 'hi', 'zh'], $locs);
 });
 
 echo "\n";

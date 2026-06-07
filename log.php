@@ -1,8 +1,13 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__ . '/i18n.php';
+// Resolve the locale eagerly so getLocale() can set the cookie before we send
+// any output for plain-text mode below.
+getLocale();
 header('Content-Type: text/plain; charset=utf-8');
 $logFile = getenv('LEGO_LOG_FILE') ?: '/var/log/lego.log';
 if (!is_file($logFile)) {
+    echo t('log.title') . "\n";
     echo "Log file not found: $logFile\n";
     exit;
 }
