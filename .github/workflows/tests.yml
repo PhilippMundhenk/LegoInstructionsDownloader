@@ -31,5 +31,8 @@ jobs:
           severity: warning
           ignore_paths: tests/fixtures
 
-      - name: Run tests
+      - name: Run unit tests
         run: php tests/run_tests.php
+
+      - name: Static invariants on start.sh
+        run: bash tests/test_start_sh.sh

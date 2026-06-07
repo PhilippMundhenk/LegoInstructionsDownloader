@@ -215,6 +215,16 @@ else
     ok "GET /  -> no PHP warnings in output"
 fi
 
+# 11. lighttpd error.log must be clean of permission/temp-file errors.
+# This guards the exact symptom of the /var/cache/lighttpd/uploads bug:
+# every POST triggered "chunk.c.778 opening temp-file failed: Permission denied".
+if grep -qE 'opening temp-file failed|Permission denied' "$TMPDIR/error.log" 2>/dev/null; then
+    bad "lighttpd error.log has permission/temp-file errors:"
+    grep -E 'opening temp-file failed|Permission denied' "$TMPDIR/error.log" | head -5
+else
+    ok "lighttpd error.log clean of permission/temp-file errors"
+fi
+
 echo
 echo "$PASS passed, $FAIL failed"
 exit $(( FAIL == 0 ? 0 : 1 ))
