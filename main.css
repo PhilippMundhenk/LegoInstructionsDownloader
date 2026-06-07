@@ -33,6 +33,27 @@ a:hover { color: var(--accent-hover); }
   border-bottom: 1px solid var(--border);
   padding: 20px clamp(16px, 4vw, 40px) 16px;
   backdrop-filter: blur(4px);
+  transition: padding 180ms ease;
+}
+
+.topbar.is-scrolled { padding-top: 10px; padding-bottom: 10px; }
+
+/* Collapse brand + download form on scroll. The search row stays visible. */
+.brand,
+.download-form {
+  overflow: hidden;
+  transition: max-height 200ms ease, opacity 150ms ease,
+              margin 200ms ease, transform 200ms ease;
+  max-height: 200px;
+}
+
+.topbar.is-scrolled .brand,
+.topbar.is-scrolled .download-form {
+  max-height: 0;
+  opacity: 0;
+  margin: 0;
+  transform: translateY(-4px);
+  pointer-events: none;
 }
 
 .brand {

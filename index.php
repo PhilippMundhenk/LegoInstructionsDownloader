@@ -135,6 +135,25 @@ $diag = empty($sets) ? diagnoseDownloads($downloadsDir) : null;
     const search  = document.getElementById('search');
     const cards   = document.getElementById('cards');
     const count   = document.getElementById('count');
+    const topbar  = document.querySelector('.topbar');
+
+    // Collapse the brand + download form once the user scrolls; the search
+    // row stays. 8/24 px hysteresis avoids flicker around the threshold.
+    if (topbar) {
+        let collapsed = false;
+        const updateTopbar = () => {
+            const y = window.scrollY || window.pageYOffset;
+            if (!collapsed && y > 24) {
+                topbar.classList.add('is-scrolled');
+                collapsed = true;
+            } else if (collapsed && y < 8) {
+                topbar.classList.remove('is-scrolled');
+                collapsed = false;
+            }
+        };
+        window.addEventListener('scroll', updateTopbar, { passive: true });
+        updateTopbar();
+    }
 
     function setBusy(busy) {
         btn.disabled = busy;
