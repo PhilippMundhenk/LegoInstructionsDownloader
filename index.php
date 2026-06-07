@@ -69,8 +69,34 @@ $diag = empty($sets) ? diagnoseDownloads($downloadsDir) : null;
                 <?php endif; ?>
             </div>
             <div class="card-body">
-                <h2 class="card-title"><?= htmlspecialchars($set['title']) ?></h2>
-                <div class="card-id">#<?= htmlspecialchars($set['id']) ?></div>
+                <div class="card-header">
+                    <div class="card-meta">
+                        <h2 class="card-title"><?= htmlspecialchars($set['title']) ?></h2>
+                        <div class="card-id">#<?= htmlspecialchars($set['id']) ?></div>
+                    </div>
+                    <div class="card-menu">
+                        <button class="card-menu-btn"
+                                type="button"
+                                aria-haspopup="true"
+                                aria-expanded="false"
+                                aria-label="Menu for set <?= htmlspecialchars($set['id'], ENT_QUOTES) ?>"
+                                title="More actions">
+                            <span class="dots" aria-hidden="true">&#8942;</span>
+                        </button>
+                        <div class="card-menu-popover" role="menu" hidden>
+                            <?php foreach (externalLinks($set['id']) as $link): ?>
+                                <a class="card-menu-item"
+                                   role="menuitem"
+                                   href="<?= htmlspecialchars($link['url'], ENT_QUOTES) ?>"
+                                   target="_blank"
+                                   rel="noopener noreferrer"><?= htmlspecialchars($link['label']) ?></a>
+                            <?php endforeach; ?>
+                            <button class="card-menu-item card-menu-item--danger card-delete"
+                                    role="menuitem"
+                                    type="button">Delete set</button>
+                        </div>
+                    </div>
+                </div>
                 <?php if (!empty($set['instructions'])): ?>
                     <div class="instructions">
                     <?php foreach ($set['instructions'] as $instr): ?>
@@ -148,19 +174,91 @@ $diag = empty($sets) ? diagnoseDownloads($downloadsDir) : null;
         }
     });
 
+    let items = cards ? Array.from(cards.children) : [];
+
+    function refreshCount() {
+        if (!count) return;
+        const visible = items.filter(it => it.style.display !== 'none').length;
+        count.textContent = visible + (visible === 1 ? ' set' : ' sets');
+    }
+
     if (search && cards) {
-        const items = Array.from(cards.children);
         search.addEventListener('input', function () {
             const q = search.value.trim().toLowerCase();
-            let shown = 0;
             for (const it of items) {
                 const id = it.dataset.id || '';
                 const title = it.dataset.title || '';
                 const match = !q || id.includes(q) || title.includes(q);
                 it.style.display = match ? '' : 'none';
-                if (match) shown++;
             }
-            count.textContent = shown + (shown === 1 ? ' set' : ' sets');
+            refreshCount();
+        });
+    }
+
+    function closeAllMenus(except) {
+        document.querySelectorAll('.card-menu-popover').forEach(p => {
+            if (p === except) return;
+            p.hidden = true;
+            const btn = p.parentElement && p.parentElement.querySelector('.card-menu-btn');
+            if (btn) btn.setAttribute('aria-expanded', 'false');
+        });
+    }
+
+    if (cards) {
+        cards.addEventListener('click', function (e) {
+            const trigger = e.target.closest('.card-menu-btn');
+            if (!trigger) return;
+            e.stopPropagation();
+            const popover = trigger.parentElement.querySelector('.card-menu-popover');
+            if (!popover) return;
+            const willOpen = popover.hidden;
+            closeAllMenus(willOpen ? popover : null);
+            popover.hidden = !willOpen;
+            trigger.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+        });
+    }
+
+    document.addEventListener('click', function (e) {
+        if (!e.target.closest('.card-menu')) closeAllMenus(null);
+    });
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') closeAllMenus(null);
+    });
+
+    if (cards) {
+        cards.addEventListener('click', async function (e) {
+            const btn = e.target.closest('.card-delete');
+            if (!btn) return;
+            closeAllMenus(null);
+            const card = btn.closest('.card');
+            if (!card) return;
+            const id = card.dataset.id || '';
+            if (!id) return;
+            if (!window.confirm('Delete set ' + id + '? This removes the downloaded files.')) return;
+            btn.disabled = true;
+            card.classList.add('deleting');
+            try {
+                const res = await fetch('delete.php', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded', 'Accept': 'application/json'},
+                    body: 'set_id=' + encodeURIComponent(id),
+                });
+                const data = await res.json();
+                if (data.ok) {
+                    card.remove();
+                    items = items.filter(it => it !== card);
+                    refreshCount();
+                    setStatus('Deleted set ' + id, true);
+                } else {
+                    btn.disabled = false;
+                    card.classList.remove('deleting');
+                    setStatus(data.error || 'Delete failed. See log.', false);
+                }
+            } catch (err) {
+                btn.disabled = false;
+                card.classList.remove('deleting');
+                setStatus('Network error: ' + err.message, false);
+            }
         });
     }
 

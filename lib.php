@@ -290,6 +290,32 @@ function diagnoseDownloads(string $downloadsDir): array {
 }
 
 /**
+ * External catalog URLs for a set, shown in the per-card menu so the user can
+ * jump from a downloaded set to its BrickLink / Brickset / Rebrickable /
+ * LEGO.com page. Returns an empty list for an id that doesn't match the same
+ * shape we accept everywhere else.
+ *
+ * BrickLink / Brickset / Rebrickable all suffix the id with "-1" because their
+ * catalog keys are <set>-<variant>; -1 is the original release and is the
+ * right default for the vast majority of sets.
+ *
+ * Each entry: ['label' => string, 'url' => string].
+ */
+function externalLinks(string $setId): array {
+    $setId = trim($setId);
+    if (!preg_match('/^[0-9]{1,8}$/', $setId)) {
+        return [];
+    }
+    return [
+        ['label' => 'LEGO.com',     'url' => 'https://www.lego.com/en-us/product/' . rawurlencode($setId)],
+        ['label' => 'Instructions', 'url' => 'https://www.lego.com/en-us/service/building-instructions/' . rawurlencode($setId)],
+        ['label' => 'BrickLink',    'url' => 'https://www.bricklink.com/v2/catalog/catalogitem.page?S=' . rawurlencode($setId) . '-1'],
+        ['label' => 'Brickset',     'url' => 'https://brickset.com/sets/' . rawurlencode($setId) . '-1'],
+        ['label' => 'Rebrickable',  'url' => 'https://rebrickable.com/sets/' . rawurlencode($setId) . '-1/'],
+    ];
+}
+
+/**
  * Delete a set's directory and everything inside it. The set id must match the
  * same /^[0-9]{1,8}$/ shape we accept on download so we can never resolve to
  * anything outside $downloadsDir. Missing set is treated as success — the

@@ -419,6 +419,26 @@ t('removeSet fails when downloads dir missing', function () {
     assertEq(false, $r['ok']);
 });
 
+t('externalLinks builds the expected catalog URLs', function () {
+    $links = externalLinks('31099');
+    $byLabel = [];
+    foreach ($links as $l) {
+        $byLabel[$l['label']] = $l['url'];
+    }
+    assertEq('https://www.lego.com/en-us/product/31099', $byLabel['LEGO.com']);
+    assertEq('https://www.lego.com/en-us/service/building-instructions/31099', $byLabel['Instructions']);
+    assertEq('https://www.bricklink.com/v2/catalog/catalogitem.page?S=31099-1', $byLabel['BrickLink']);
+    assertEq('https://brickset.com/sets/31099-1', $byLabel['Brickset']);
+    assertEq('https://rebrickable.com/sets/31099-1/', $byLabel['Rebrickable']);
+});
+
+t('externalLinks rejects bad ids', function () {
+    assertEq([], externalLinks(''));
+    assertEq([], externalLinks('1; rm -rf /'));
+    assertEq([], externalLinks('abc'));
+    assertEq([], externalLinks('123456789')); // too long
+});
+
 echo "\n";
 echo "$passed passed, $failed failed\n";
 
