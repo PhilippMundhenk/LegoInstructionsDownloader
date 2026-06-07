@@ -17,6 +17,10 @@ mkdir -p /var/log/lighttpd
 chown -R "${USER_UID}:${USER_GID}" /var/log/lighttpd
 mkdir -p /var/run/lighttpd
 chown -R "${USER_UID}:${USER_GID}" /var/run/lighttpd
+# lighttpd writes upload temp files here. The package-installed dir is owned by
+# uid 33 (its default www-data); we just changed www-data to UID, so chown it.
+mkdir -p /var/cache/lighttpd/uploads
+chown -R "${USER_UID}:${USER_GID}" /var/cache/lighttpd
 mkdir -p /var/www
 chown -R "${USER_UID}:${USER_GID}" /var/www/
 
@@ -44,10 +48,13 @@ else
 fi
 
 # Migrate any pre-rewrite set dirs (with raw PDFs but no name.txt) to the
-# current format. Idempotent: already-migrated sets are skipped.
+# current format. Idempotent: already-migrated sets are skipped. We tee to
+# stdout so the per-set [migrate] lines land directly in `docker logs` —
+# don't rely on the tail below (it starts with -n 0 and would skip them).
 if [[ -x /var/www/html/migrate.sh ]]; then
     echo "[start] running migration"
-    su -s /bin/bash www-data -c "/var/www/html/migrate.sh '$DL_DIR'" >> "$LEGO_LOG" 2>&1 || true
+    { su -s /bin/bash www-data -c "/var/www/html/migrate.sh '$DL_DIR'" 2>&1 || true; } \
+        | tee -a "$LEGO_LOG"
 fi
 
 # Forward log files to docker stdout so `docker logs` shows fetch progress + errors.
