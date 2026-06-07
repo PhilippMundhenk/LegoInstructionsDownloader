@@ -66,11 +66,7 @@ HTML
 printf 'fake-pdf' > "$DOWNLOADS/7696/6056567.pdf"
 printf 'fake-png' > "$DOWNLOADS/7696/6056567.png"
 
-# --- legacy set with NO raw HTML at all — migration should fall back to "Set <id>"
-# (we use an id that won't 404 the test by hitting real lego.com — disable network
-# fetch by removing the wget binary lookup? no, just trust the fallback path
-# triggers when the HTML is absent). To make this deterministic, we set
-# LEGO_LOCALE to a bogus value that wget will fail on quickly.
+# --- legacy set with NO raw HTML — migration falls back to "Set <id>".
 mkdir -p "$DOWNLOADS/99001"
 printf 'fake-pdf' > "$DOWNLOADS/99001/some.pdf"
 
@@ -88,9 +84,7 @@ export LEGO_LOG_FILE="$TMPDIR/lego.log"
 touch "$LEGO_LOG_FILE"
 
 # --- run migration (mirrors what start.sh does in the container) before booting.
-# Use a TLD that resolves to nothing so the offline-fallback path is exercised
-# deterministically without hitting the real lego.com.
-LEGO_LOCALE=invalid bash "$DOCROOT/migrate.sh" "$DOWNLOADS" >> "$LEGO_LOG_FILE" 2>&1 || true
+bash "$DOCROOT/migrate.sh" "$DOWNLOADS" >> "$LEGO_LOG_FILE" 2>&1 || true
 
 "$LIGHTTPD" -f "$TMPDIR/lighttpd.conf" -D >"$TMPDIR/lighttpd.stdout" 2>"$TMPDIR/lighttpd.stderr" &
 

@@ -15,6 +15,8 @@ function listSets(string $downloadsDir, string $publicPrefix = '/downloads'): ar
         error_log("[lib] listSets: scandir('$downloadsDir') failed — likely permission denied (SMB mount?)");
         return [];
     }
+    $considered = 0;
+    $rejected = [];
     $sets = [];
     foreach ($entries as $entry) {
         if ($entry === '.' || $entry === '..' || $entry === '@eaDir') {
@@ -24,10 +26,18 @@ function listSets(string $downloadsDir, string $publicPrefix = '/downloads'): ar
         if (!is_dir($path)) {
             continue;
         }
+        $considered++;
         $set = parseSet($path, $publicPrefix);
         if ($set !== null) {
             $sets[] = $set;
+        } else {
+            $rejected[] = $entry;
         }
+    }
+    if (!empty($rejected)) {
+        error_log("[lib] listSets: " . count($sets) . "/$considered shown; rejected (no marker file): "
+            . implode(', ', array_slice($rejected, 0, 50))
+            . (count($rejected) > 50 ? ' …' : ''));
     }
     usort($sets, function ($a, $b) {
         return strnatcmp($a['id'], $b['id']);

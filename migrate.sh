@@ -7,11 +7,11 @@
 # Legacy sets predate the rewritten fetch.sh and typically contain only the
 # downloaded PDFs/images. Some still have the raw HTML index file (saved as
 # the set id). When the HTML is there we parse the name out of it; otherwise
-# we re-fetch the index from lego.com (one short request per legacy set).
+# we fall back to "Set <id>" — no network call, to avoid wget writing temp
+# files into the SMB mount (which fails with permission denied for many shares).
 set -uo pipefail
 
 DIR="${1:-${DOWNLOADS_DIR:-/downloads}}"
-LOCALE="${LEGO_LOCALE:-de-de}"
 
 log() { printf '[%s] [migrate] %s\n' "$(date -u +%FT%TZ)" "$*"; }
 
@@ -63,26 +63,18 @@ for child in "$DIR"/*/; do
     fi
 
     if [[ -z "$name" ]]; then
-        url="https://www.lego.com/$LOCALE/service/building-instructions/$id"
-        tmp="$child/.$id.fetching"
-        if wget --quiet --tries=2 --timeout=15 -O "$tmp" "$url" 2>/dev/null && [[ -s "$tmp" ]]; then
-            mv "$tmp" "$child/$id"
-            name="$(extract_name_from_html "$child/$id" "$id")"
-        else
-            rm -f "$tmp"
-        fi
-    fi
-
-    if [[ -z "$name" ]]; then
         name="Set $id"
-        log "$id: could not derive name, using fallback"
     fi
 
-    if printf '%s\n' "$name" > "$child/name.txt" 2>/dev/null; then
+    # Write to the target directly. If your SMB share is mounted noexec/noperm or
+    # the owning uid blocks www-data writes, the error from this line is the one
+    # to chase — surface it in the log instead of suppressing it.
+    if printf '%s\n' "$name" > "$child/name.txt"; then
         log "$id -> '$name'"
         MIGRATED=$((MIGRATED+1))
     else
-        log "$id: ERROR could not write name.txt (permission denied on mount?)"
+        rc=$?
+        log "$id: ERROR could not write $child/name.txt (rc=$rc) — check mount perms for www-data"
         FAILED=$((FAILED+1))
     fi
 done
