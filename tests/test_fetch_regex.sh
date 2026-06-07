@@ -5,7 +5,6 @@
 # change shows up here, not as a half-broken set in the user's library.
 set -uo pipefail
 
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PASS=0; FAIL=0
 ok()  { PASS=$((PASS+1)); printf '  \033[32mok\033[0m   %s\n' "$*"; }
 bad() { FAIL=$((FAIL+1)); printf '  \033[31mFAIL\033[0m %s\n' "$*"; }

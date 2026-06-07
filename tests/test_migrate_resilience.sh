@@ -80,7 +80,7 @@ fi
 if grep -qE 'done — 2 migrated, 1 already current, 1 failed' "$LOG"; then
     ok "summary line counts correctly"
 else
-    bad "summary line wrong: $(grep done "$LOG")"
+    bad "summary line wrong: $(grep 'done' "$LOG")"
 fi
 
 # --- HTML-based name extraction (when raw index is present locally) — covers
