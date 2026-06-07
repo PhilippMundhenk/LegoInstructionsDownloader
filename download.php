@@ -1,31 +1,47 @@
 <?php
+declare(strict_types=1);
+require_once __DIR__ . '/lib.php';
 
-function getApiKey($set_id, $locale) {
-	$curl_session = curl_init(); 
-	curl_setopt($curl_session, CURLOPT_URL, "https://www.lego.com/$locale/service/buildinginstructions/$set_id");
-	curl_setopt($curl_session, CURLOPT_RETURNTRANSFER, true);
-	$result = curl_exec($curl_session);
-	preg_match('/https:\/\/www.lego.com\/service\/dist\/scripts.min.min..*.js/', $result, $matches);
-	$script = $matches[0][0];
-	print_r($matches);
-	
-	curl_setopt($curl_session, CURLOPT_URL, $script);
-	curl_setopt($curl_session, CURLOPT_RETURNTRANSFER, true);
-	$result = curl_exec($curl_session);
-	
-	preg_match('/{headers:{"x-api-key":".*"}};/', $result, $matches);
-	$key = str_replace('{headers:{"x-api-key":"', "", $matches[0][0]);
-	$key = str_replace('"}};', "", $result);
-	
-	curl_close($curl_session);
-	
-	return $result;
+header('Content-Type: application/json');
+
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    http_response_code(405);
+    echo json_encode(['ok' => false, 'error' => 'POST required']);
+    exit;
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-	$set_id=$_GET['set_id'];
-	$locale=$_GET['locale'];
-	
-	$key=getApiKey($set_id, $locale);
+$raw = $_POST['set_id'] ?? '';
+$raw = trim((string)$raw);
+if ($raw === '') {
+    http_response_code(400);
+    echo json_encode(['ok' => false, 'error' => 'No set ID given']);
+    exit;
 }
-?>
+
+$ids = array_values(array_filter(array_map('trim', explode(',', $raw))));
+$downloadsDir = getenv('DOWNLOADS_DIR') ?: '/downloads';
+$scriptDir    = __DIR__;
+$logFile      = getenv('LEGO_LOG_FILE') ?: '/var/log/lego.log';
+
+$results = [];
+$allOk = true;
+foreach ($ids as $id) {
+    $r = runFetch($id, $downloadsDir, $scriptDir, $logFile);
+    $results[$id] = $r['ok'];
+    if (!$r['ok']) {
+        $allOk = false;
+        error_log("[lego] download failed for $id: " . $r['output']);
+    }
+}
+
+if (!$allOk) {
+    http_response_code(500);
+    echo json_encode([
+        'ok'      => false,
+        'error'   => 'One or more downloads failed. See log.',
+        'results' => $results,
+    ]);
+    exit;
+}
+
+echo json_encode(['ok' => true, 'results' => $results]);

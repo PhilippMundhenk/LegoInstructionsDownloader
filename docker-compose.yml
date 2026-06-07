@@ -12,6 +12,12 @@ services:
         environment:
             - UID=1000 # make sure that mount is accessible for this user
             - GID=1000 # make sure that mount is accessible for this user
+            - LEGO_LOCALE=de-de
         volumes:
             - /path/to/mount:/downloads
-        restart: none
+        logging:
+            driver: json-file
+            options:
+                max-size: "10m"
+                max-file: "3"
+        restart: unless-stopped

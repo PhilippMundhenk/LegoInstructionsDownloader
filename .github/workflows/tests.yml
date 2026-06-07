@@ -1,0 +1,35 @@
+name: Tests
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_call:
+
+jobs:
+  php-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: none
+
+      - name: Lint PHP files
+        run: |
+          for f in $(find . -name '*.php' -not -path './tests/fixtures/*'); do
+            php -l "$f"
+          done
+
+      - name: Shellcheck fetch.sh / start.sh
+        uses: ludeeus/action-shellcheck@master
+        with:
+          severity: warning
+          ignore_paths: tests/fixtures
+
+      - name: Run tests
+        run: php tests/run_tests.php
