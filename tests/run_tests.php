@@ -98,7 +98,8 @@ touchFile("$root/31099/@eaDir/some_thumb.png");
 touchFile("$root/12345/data.json", "{not valid json");
 touchFile("$root/12345/12345_Prod.png");
 
-/* directory with neither marker file: should be skipped */
+/* directory with neither marker file: should be skipped
+ * (legacy sets are migrated to name.txt at startup by migrate.sh) */
 mkdir("$root/99999", 0777, true);
 touchFile("$root/99999/whatever.txt");
 

@@ -7,9 +7,14 @@ declare(strict_types=1);
  */
 function listSets(string $downloadsDir, string $publicPrefix = '/downloads'): array {
     if (!is_dir($downloadsDir)) {
+        error_log("[lib] listSets: '$downloadsDir' is not a directory (or unreadable)");
         return [];
     }
-    $entries = @scandir($downloadsDir) ?: [];
+    $entries = @scandir($downloadsDir);
+    if ($entries === false) {
+        error_log("[lib] listSets: scandir('$downloadsDir') failed — likely permission denied (SMB mount?)");
+        return [];
+    }
     $sets = [];
     foreach ($entries as $entry) {
         if ($entry === '.' || $entry === '..' || $entry === '@eaDir') {
@@ -59,6 +64,8 @@ function parseSet(string $dir, string $publicPrefix = '/downloads'): ?array {
     $hasDataJson = in_array('data.json', $files, true);
     $hasNameTxt  = in_array('name.txt', $files, true);
 
+    // Legacy sets are migrated to name.txt at container startup (see migrate.sh),
+    // so by the time we get here everything should have one of these markers.
     if (!$hasDataJson && !$hasNameTxt) {
         return null;
     }
@@ -174,6 +181,47 @@ function findInstructions(array $files): array {
         return strnatcmp(basename($a['pdf']), basename($b['pdf']));
     });
     return $instructions;
+}
+
+/**
+ * Inspect $downloadsDir from the PHP process's perspective. Used by the empty-state
+ * UI to tell the user *why* the list is empty (missing mount, wrong perms, etc.)
+ * rather than the misleading "No sets yet" message.
+ *
+ * Returns ['kind' => 'ok'|'missing'|'unreadable'|'empty'|'no-sets', 'detail' => string].
+ */
+function diagnoseDownloads(string $downloadsDir): array {
+    if (!file_exists($downloadsDir)) {
+        return ['kind' => 'missing', 'detail' => "$downloadsDir does not exist inside the container"];
+    }
+    if (!is_dir($downloadsDir)) {
+        return ['kind' => 'missing', 'detail' => "$downloadsDir is not a directory"];
+    }
+    if (!is_readable($downloadsDir)) {
+        $owner = function_exists('posix_getpwuid') && function_exists('fileowner')
+            ? (posix_getpwuid(fileowner($downloadsDir))['name'] ?? '?')
+            : '?';
+        $perms = substr(sprintf('%o', fileperms($downloadsDir)), -4);
+        $whoami = function_exists('posix_geteuid') && function_exists('posix_getpwuid')
+            ? (posix_getpwuid(posix_geteuid())['name'] ?? '?')
+            : '?';
+        return [
+            'kind'   => 'unreadable',
+            'detail' => "$downloadsDir exists but is not readable by '$whoami' (owner=$owner, mode=$perms). "
+                      . "If this is an SMB/CIFS mount, set uid=<UID>,gid=<GID> in the mount options on the host.",
+        ];
+    }
+    $entries = @scandir($downloadsDir);
+    if ($entries === false) {
+        return ['kind' => 'unreadable', 'detail' => "scandir($downloadsDir) failed"];
+    }
+    $entries = array_values(array_filter($entries, function ($e) {
+        return $e !== '.' && $e !== '..' && $e !== '@eaDir';
+    }));
+    if (empty($entries)) {
+        return ['kind' => 'empty', 'detail' => "$downloadsDir is empty"];
+    }
+    return ['kind' => 'no-sets', 'detail' => count($entries) . " entries in $downloadsDir, none look like set directories"];
 }
 
 /**

@@ -32,8 +32,9 @@ ADD list.php /var/www/html
 ADD main.css /var/www/html
 ADD lib.php /var/www/html
 ADD fetch.sh /var/www/html
+ADD migrate.sh /var/www/html
 RUN chown -R www-data /var/www/
-RUN chmod u+x /var/www/html/fetch.sh
+RUN chmod u+x /var/www/html/fetch.sh /var/www/html/migrate.sh
 
 RUN ln -s /downloads /var/www/html/downloads
 

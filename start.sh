@@ -26,6 +26,30 @@ chown "${USER_UID}:${USER_GID}" "$LEGO_LOG" /var/log/lighttpd/error.log /var/log
 
 echo "[start] running as www-data uid=${USER_UID} gid=${USER_GID}"
 
+# Mount diagnostics — invaluable for SMB/NFS mounts where uid/perms surprise you.
+DL_DIR="${DOWNLOADS_DIR:-/downloads}"
+if [[ -d "$DL_DIR" ]]; then
+    echo "[start] $DL_DIR exists: $(stat -c '%A %u:%g' "$DL_DIR" 2>/dev/null || echo '?')"
+    echo "[start] $DL_DIR contains $(find "$DL_DIR" -mindepth 1 -maxdepth 1 -not -name '@eaDir' 2>/dev/null | wc -l) entries"
+    # Probe a few children + their marker files so we know if old sets lack name.txt.
+    find "$DL_DIR" -mindepth 1 -maxdepth 1 -type d -not -name '@eaDir' 2>/dev/null | head -3 | while read -r child; do
+        echo "[start]   $(basename "$child"): $(ls "$child" 2>/dev/null | tr '\n' ' ' | head -c 200)"
+    done
+    # Confirm www-data can actually read it (the whole point of UID/GID env).
+    if ! su -s /bin/sh www-data -c "test -r '$DL_DIR' && ls '$DL_DIR' >/dev/null 2>&1"; then
+        echo "[start] WARNING: www-data (uid=${USER_UID}) cannot read $DL_DIR — list will appear empty"
+    fi
+else
+    echo "[start] WARNING: $DL_DIR does not exist — volume not mounted?"
+fi
+
+# Migrate any pre-rewrite set dirs (with raw PDFs but no name.txt) to the
+# current format. Idempotent: already-migrated sets are skipped.
+if [[ -x /var/www/html/migrate.sh ]]; then
+    echo "[start] running migration"
+    su -s /bin/bash www-data -c "/var/www/html/migrate.sh '$DL_DIR'" >> "$LEGO_LOG" 2>&1 || true
+fi
+
 # Forward log files to docker stdout so `docker logs` shows fetch progress + errors.
 tail -n 0 -F "$LEGO_LOG" /var/log/lighttpd/error.log /var/log/lighttpd/access.log &
 TAIL_PID=$!

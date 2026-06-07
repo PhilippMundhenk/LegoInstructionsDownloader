@@ -4,12 +4,14 @@ require_once __DIR__ . '/lib.php';
 
 $downloadsDir = getenv('DOWNLOADS_DIR') ?: '/downloads';
 $sets = listSets($downloadsDir);
+$cssVer = @filemtime(__DIR__ . '/main.css') ?: 1;
+$diag = empty($sets) ? diagnoseDownloads($downloadsDir) : null;
 ?><!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="stylesheet" href="main.css">
+<link rel="stylesheet" href="main.css?v=<?= $cssVer ?>">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%234f8cff'/%3E%3Ccircle cx='10' cy='12' r='3' fill='%23fff'/%3E%3Ccircle cx='22' cy='12' r='3' fill='%23fff'/%3E%3Crect x='4' y='17' width='24' height='11' rx='2' fill='%23ff8b3d'/%3E%3C/svg%3E">
 <title>Lego Manager</title>
 </head>
@@ -42,7 +44,17 @@ $sets = listSets($downloadsDir);
 
 <main>
 <?php if (empty($sets)): ?>
-    <p class="empty">No sets yet. Enter a Set ID above to download instructions.</p>
+    <?php if ($diag && $diag['kind'] === 'no-sets'): ?>
+        <p class="empty">No set directories found — but <?= htmlspecialchars($diag['detail']) ?>.
+            They may be missing <code>data.json</code> or <code>name.txt</code> markers,
+            or their names don't look like set IDs.</p>
+    <?php elseif ($diag && $diag['kind'] === 'unreadable'): ?>
+        <p class="empty"><?= htmlspecialchars($diag['detail']) ?></p>
+    <?php elseif ($diag && $diag['kind'] === 'missing'): ?>
+        <p class="empty"><?= htmlspecialchars($diag['detail']) ?>. Check your volume mount.</p>
+    <?php else: ?>
+        <p class="empty">No sets yet. Enter a Set ID above to download instructions.</p>
+    <?php endif; ?>
 <?php else: ?>
     <ul class="cards" id="cards">
     <?php foreach ($sets as $set): ?>
