@@ -10,6 +10,7 @@ $sets = listSets($downloadsDir);
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="main.css">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%234f8cff'/%3E%3Ccircle cx='10' cy='12' r='3' fill='%23fff'/%3E%3Ccircle cx='22' cy='12' r='3' fill='%23fff'/%3E%3Crect x='4' y='17' width='24' height='11' rx='2' fill='%23ff8b3d'/%3E%3C/svg%3E">
 <title>Lego Manager</title>
 </head>
 <body>
@@ -101,6 +102,7 @@ $sets = listSets($downloadsDir);
         btn.disabled = busy;
         input.disabled = busy;
         btn.classList.toggle('busy', busy);
+        form.setAttribute('aria-busy', busy ? 'true' : 'false');
     }
 
     function setStatus(msg, ok) {
@@ -149,6 +151,19 @@ $sets = listSets($downloadsDir);
             count.textContent = shown + (shown === 1 ? ' set' : ' sets');
         });
     }
+
+    // "/" focuses the search box; Esc clears it.
+    document.addEventListener('keydown', function (e) {
+        const tag = (e.target.tagName || '').toLowerCase();
+        const typing = tag === 'input' || tag === 'textarea';
+        if (e.key === '/' && !typing && search) {
+            e.preventDefault();
+            search.focus();
+        } else if (e.key === 'Escape' && document.activeElement === search) {
+            search.value = '';
+            search.dispatchEvent(new Event('input'));
+        }
+    });
 })();
 </script>
 </body>

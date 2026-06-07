@@ -17,6 +17,7 @@ RUN apt-get update \
         lighttpd \
         php-cgi \
         php-curl \
+        php-mbstring \
  && apt-get -y clean \
  && rm -rf /var/lib/apt/lists/*
 

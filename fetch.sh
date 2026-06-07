@@ -42,11 +42,13 @@ if [[ ! -s "$ID" ]]; then
 fi
 
 FILES_LIST="$(mktemp)"
-trap 'rm -f "$FILES_LIST"' EXIT
+RESULTS_DIR="$(mktemp -d)"
+trap 'rm -f "$FILES_LIST"; rm -rf "$RESULTS_DIR"' EXIT
 
 grep -oP "https://www.lego.com/cdn/product-assets/product.bi.core.\w{3}/\d{7}.\w{3}" "$ID" | sort -u >  "$FILES_LIST"
 grep -oP "https://www.lego.com/cdn/product-assets/product.img.pri.*?\"" "$ID" | sed 's/.$//' | sort -u >> "$FILES_LIST"
 grep -oP '{"name":".*?"' "$ID" | head -n1 | sed 's/{"name":"//' | sed 's/"//' > name.txt
+# id.txt is kept for compatibility with older listings that consumed it
 cp "$ID" id.txt
 
 COUNT=$(wc -l < "$FILES_LIST" | tr -d ' ')
@@ -59,8 +61,6 @@ fi
 FAILED=0
 DOWNLOADED=0
 PIDS=()
-RESULTS_DIR="$(mktemp -d)"
-trap 'rm -f "$FILES_LIST"; rm -rf "$RESULTS_DIR"' EXIT
 
 i=0
 while IFS= read -r url; do
