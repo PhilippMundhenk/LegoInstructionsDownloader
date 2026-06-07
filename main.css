@@ -177,10 +177,11 @@ main { padding: 24px clamp(16px, 4vw, 40px) 60px; }
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  overflow: hidden;
   display: flex;
   flex-direction: column;
   transition: transform 150ms, border-color 150ms;
+  /* no overflow:hidden — would clip .card-menu-popover. The image's rounded
+     top corners are handled on .card-image directly. */
 }
 
 .card:hover {
@@ -195,6 +196,8 @@ main { padding: 24px clamp(16px, 4vw, 40px) 60px; }
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  border-top-left-radius: var(--radius);
+  border-top-right-radius: var(--radius);
 }
 
 .card-image img {
@@ -279,7 +282,7 @@ main { padding: 24px clamp(16px, 4vw, 40px) 60px; }
   border-radius: 10px;
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
   padding: 6px;
-  z-index: 10;
+  z-index: 20;
   display: flex;
   flex-direction: column;
   gap: 2px;
