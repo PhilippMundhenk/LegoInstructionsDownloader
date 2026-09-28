@@ -29,7 +29,7 @@ done
 # Every file the runtime needs must be COPY'd/ADD'd into the image.
 # Forgetting one means a 404 (for static files) or a "not found" log line
 # (for scripts) at runtime.
-for f in index.php list.php log.php download.php main.css lib.php fetch.sh migrate.sh start.sh; do
+for f in index.php list.php log.php download.php delete.php rename.php sold.php i18n.php main.css lib.php fetch.sh migrate.sh start.sh; do
     if grep -qE "(ADD|COPY)\s+$f\b" "$DF"; then
         ok "Dockerfile copies $f"
     else

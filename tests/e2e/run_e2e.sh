@@ -36,9 +36,11 @@ DOCROOT="$TMPDIR/www"
 DOWNLOADS="$TMPDIR/downloads"
 mkdir -p "$DOCROOT" "$DOWNLOADS" "$TMPDIR/upload"
 
-for f in index.php list.php log.php download.php main.css lib.php fetch.sh migrate.sh; do
+for f in index.php list.php log.php download.php delete.php rename.php sold.php \
+         i18n.php main.css favicon.svg lib.php fetch.sh migrate.sh; do
     cp "$ROOT/$f" "$DOCROOT/"
 done
+cp -r "$ROOT/i18n" "$DOCROOT/i18n"
 chmod +x "$DOCROOT/fetch.sh" "$DOCROOT/migrate.sh"
 ln -s "$DOWNLOADS" "$DOCROOT/downloads"
 
@@ -55,6 +57,13 @@ printf 'Cute Pug\n' > "$DOWNLOADS/30640/name.txt"
 printf 'fake-png' > "$DOWNLOADS/30640/30640_Prod.png"
 printf 'fake-pdf' > "$DOWNLOADS/30640/6447079.pdf"
 printf 'fake-png' > "$DOWNLOADS/30640/6447079.png"
+
+# --- sold set: v2 layout plus a sold.txt marker. Hidden by default on the index.
+mkdir -p "$DOWNLOADS/50001"
+printf 'Sold Thing\n' > "$DOWNLOADS/50001/name.txt"
+printf '2026-01-15\n' > "$DOWNLOADS/50001/sold.txt"
+printf 'fake-png' > "$DOWNLOADS/50001/50001_Prod.png"
+printf 'fake-pdf' > "$DOWNLOADS/50001/6600001.pdf"
 
 # --- legacy set: numeric dir + PDFs but no name.txt/data.json, with raw HTML index
 # present. migrate.sh should write name.txt from the embedded "setNumber" anchor.
@@ -172,10 +181,73 @@ code=$(curl -s -o /dev/null -w '%{http_code}' "$BASE/list.php")
 [[ "$code" == "302" ]] && ok "GET /list.php -> 302 (redirect)" \
                       || bad "GET /list.php -> $code (expected 302)"
 
-# 9. counter shows correct count (2 v1/v2 sets + 2 migrated legacy sets = 4)
+# 9. counter shows correct count (2 v1/v2 sets + 2 migrated legacy sets = 4;
+#    the sold set 50001 is excluded from the default count)
 grep -q '4 sets' "$HOME_BODY" \
-    && ok "GET /  -> counter shows '4 sets'" \
+    && ok "GET /  -> counter shows '4 sets' (sold set excluded)" \
     || bad "GET /  -> counter wrong (have: $(grep -oE '[0-9]+ sets?' "$HOME_BODY" | head -1))"
+
+# 9e. sold set: rendered in the DOM (so the toggle can reveal it) with the
+#     is-sold class, but the container is NOT in show-sold mode by default.
+grep -q 'class="card is-sold"' "$HOME_BODY" \
+    && ok "GET /  -> sold set rendered with is-sold class" \
+    || bad "GET /  -> sold set missing is-sold class"
+grep -q 'Sold Thing' "$HOME_BODY" \
+    && ok "GET /  -> sold set title present in DOM" \
+    || bad "GET /  -> sold set title missing"
+grep -q '<ul class="cards" id="cards">' "$HOME_BODY" \
+    && ok "GET /  -> cards container defaults to hiding sold sets" \
+    || bad "GET /  -> cards container unexpectedly in show-sold mode"
+grep -q 'id="show-sold"' "$HOME_BODY" \
+    && ok "GET /  -> 'Show sold sets' toggle present" \
+    || bad "GET /  -> 'Show sold sets' toggle missing"
+grep -q '2026-01-15' "$HOME_BODY" \
+    && ok "GET /  -> sold date rendered" \
+    || bad "GET /  -> sold date missing"
+
+# 9f. with the show_sold cookie the container flips to show-sold mode and the
+#     counter includes the sold set.
+SOLD_BODY="$TMPDIR/home_sold.html"
+curl -s -o "$SOLD_BODY" -b 'show_sold=1' "$BASE/"
+grep -q '<ul class="cards show-sold" id="cards">' "$SOLD_BODY" \
+    && ok "GET / (show_sold=1) -> cards container in show-sold mode" \
+    || bad "GET / (show_sold=1) -> container not in show-sold mode"
+grep -q 'id="show-sold" type="checkbox" checked' "$SOLD_BODY" \
+    && ok "GET / (show_sold=1) -> toggle rendered checked" \
+    || bad "GET / (show_sold=1) -> toggle not checked"
+grep -q '5 sets' "$SOLD_BODY" \
+    && ok "GET / (show_sold=1) -> counter shows '5 sets'" \
+    || bad "GET / (show_sold=1) -> counter wrong (have: $(grep -oE '[0-9]+ sets?' "$SOLD_BODY" | head -1))"
+
+# 9g. sold.php round trip: mark 30640 sold, check the marker, unmark it.
+resp=$(curl -s -X POST -d 'set_id=30640&sold=1' "$BASE/sold.php")
+echo "$resp" | grep -q '"ok":true' && echo "$resp" | grep -q '"sold":true' \
+    && ok "POST /sold.php sold=1 -> ok:true, sold:true" \
+    || bad "POST /sold.php sold=1 -> unexpected: $resp"
+[[ -f "$DOWNLOADS/30640/sold.txt" ]] \
+    && ok "POST /sold.php sold=1 -> wrote sold.txt next to the set files" \
+    || bad "POST /sold.php sold=1 -> no sold.txt written"
+grep -qE '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' "$DOWNLOADS/30640/sold.txt" 2>/dev/null \
+    && ok "POST /sold.php sold=1 -> sold.txt holds an ISO date" \
+    || bad "POST /sold.php sold=1 -> sold.txt content odd: $(cat "$DOWNLOADS/30640/sold.txt" 2>/dev/null)"
+resp=$(curl -s -X POST -d 'set_id=30640&sold=0' "$BASE/sold.php")
+echo "$resp" | grep -q '"ok":true' && echo "$resp" | grep -q '"sold":false' \
+    && ok "POST /sold.php sold=0 -> ok:true, sold:false" \
+    || bad "POST /sold.php sold=0 -> unexpected: $resp"
+[[ ! -f "$DOWNLOADS/30640/sold.txt" ]] \
+    && ok "POST /sold.php sold=0 -> sold.txt removed" \
+    || bad "POST /sold.php sold=0 -> sold.txt still present"
+resp=$(curl -s -X POST -d 'set_id=30640&sold=maybe' "$BASE/sold.php")
+echo "$resp" | grep -q '"ok":false' \
+    && ok "POST /sold.php (bad sold value) -> ok:false" \
+    || bad "POST /sold.php (bad sold value) -> unexpected: $resp"
+resp=$(curl -s -X POST -d 'set_id=../etc&sold=1' "$BASE/sold.php")
+echo "$resp" | grep -q '"ok":false' \
+    && ok "POST /sold.php (traversal id) -> ok:false" \
+    || bad "POST /sold.php (traversal id) -> unexpected: $resp"
+code=$(curl -s -o /dev/null -w '%{http_code}' -X GET "$BASE/sold.php")
+[[ "$code" == "405" ]] && ok "GET /sold.php -> 405" \
+                      || bad "GET /sold.php -> $code (expected 405)"
 
 # 9b. migration ran and wrote name.txt for the legacy sets
 [[ -f "$DOWNLOADS/7696/name.txt" ]] \

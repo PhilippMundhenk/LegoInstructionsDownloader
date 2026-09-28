@@ -121,6 +121,8 @@ function jsStrings(): array {
     $keys = [
         'rename.save', 'rename.cancel', 'rename.label', 'rename.failed', 'rename.success',
         'delete.confirm', 'delete.success', 'delete.failed',
+        'menu.mark_sold', 'menu.mark_unsold', 'card.sold_badge', 'card.sold_on',
+        'filter.sold_count', 'sold.success', 'unsold.success', 'sold.failed',
         'status.downloading', 'status.done', 'status.download_failed', 'status.network_error',
         'count.set', 'count.sets',
     ];

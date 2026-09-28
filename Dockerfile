@@ -30,6 +30,7 @@ ADD log.php /var/www/html
 ADD download.php /var/www/html
 ADD delete.php /var/www/html
 ADD rename.php /var/www/html
+ADD sold.php /var/www/html
 ADD list.php /var/www/html
 ADD main.css /var/www/html
 ADD favicon.svg /var/www/html

@@ -170,6 +170,17 @@ foreach (['7100001', '7100002', '7100003'] as $b) {
     touchFile("$root/40003/$b.png");
 }
 
+/* v2 set that has been sold: sold.txt marker with an ISO date body */
+touchFile("$root/50001/name.txt", "Sold Thing\n");
+touchFile("$root/50001/sold.txt", "2026-01-15\n");
+touchFile("$root/50001/50001_Prod.png");
+touchFile("$root/50001/6600001.pdf");
+
+/* sold marker with garbage body — still counts as sold, just no date */
+touchFile("$root/50002/name.txt", "Sold No Date\n");
+touchFile("$root/50002/sold.txt", "yes");
+touchFile("$root/50002/50002_Prod.png");
+
 /* @eaDir noise: should be ignored */
 touchFile("$root/@eaDir/should_be_ignored.png");
 touchFile("$root/31099/@eaDir/some_thumb.png");
@@ -587,6 +598,106 @@ it('renameSet fails when downloads dir missing', function () {
     assertEq(false, $r['ok']);
 });
 
+it('parseSet reports sold=false without a sold.txt marker', function () use ($root) {
+    $set = parseSet("$root/30640", '/d');
+    assertEq(false, $set['sold']);
+    assertNull($set['sold_on']);
+});
+
+it('parseSet reads sold.txt marker and its date', function () use ($root) {
+    $set = parseSet("$root/50001", '/d');
+    assertEq(true, $set['sold']);
+    assertEq('2026-01-15', $set['sold_on']);
+    assertEq('Sold Thing', $set['title'], 'sold set still has its name');
+});
+
+it('parseSet treats a sold.txt with no parseable date as sold, date null', function () use ($root) {
+    $set = parseSet("$root/50002", '/d');
+    assertEq(true, $set['sold']);
+    assertNull($set['sold_on']);
+});
+
+it('listSets still includes sold sets (hiding is a view concern)', function () use ($root) {
+    $ids = array_column(listSets($root, '/d'), 'id');
+    assertContains($ids, '50001');
+    assertContains($ids, '50002');
+});
+
+it('setSold writes sold.txt with today\'s date and parseSet picks it up', function () use ($root) {
+    $id = '70001';
+    touchFile("$root/$id/name.txt", "To Be Sold");
+    touchFile("$root/$id/$id" . "_Prod.png");
+    assertEq(false, parseSet("$root/$id", '/d')['sold'], 'pre-state');
+    $r = setSold($id, true, $root);
+    assertEq(true, $r['ok'], 'setSold ok');
+    assertEq(true, $r['sold']);
+    assertEq(date('Y-m-d'), $r['sold_on']);
+    assertTrue(is_file("$root/$id/sold.txt"), 'sold.txt written');
+    assertEq(date('Y-m-d'), trim((string)file_get_contents("$root/$id/sold.txt")));
+    $set = parseSet("$root/$id", '/d');
+    assertEq(true, $set['sold']);
+    assertEq(date('Y-m-d'), $set['sold_on']);
+    // name.txt and the image are untouched
+    assertEq('To Be Sold', $set['title']);
+    assertTrue(is_file("$root/$id/$id" . "_Prod.png"), 'image untouched');
+});
+
+it('setSold(true) is idempotent and keeps the original date', function () use ($root) {
+    $id = '70002';
+    touchFile("$root/$id/name.txt", "Already Sold");
+    touchFile("$root/$id/sold.txt", "2020-05-05\n");
+    $r = setSold($id, true, $root);
+    assertEq(true, $r['ok']);
+    assertEq('2020-05-05', $r['sold_on'], 'original date preserved');
+    assertEq("2020-05-05", trim((string)file_get_contents("$root/$id/sold.txt")));
+});
+
+it('setSold(false) removes sold.txt and is idempotent', function () use ($root) {
+    $id = '70003';
+    touchFile("$root/$id/name.txt", "Unsell Me");
+    touchFile("$root/$id/sold.txt", "2021-01-01\n");
+    $r = setSold($id, false, $root);
+    assertEq(true, $r['ok']);
+    assertEq(false, $r['sold']);
+    assertEq(false, is_file("$root/$id/sold.txt"), 'sold.txt removed');
+    assertEq(false, parseSet("$root/$id", '/d')['sold']);
+    $r2 = setSold($id, false, $root);
+    assertEq(true, $r2['ok'], 'unsold twice is fine');
+    assertTrue(is_file("$root/$id/name.txt"), 'name.txt untouched');
+});
+
+it('setSold rejects invalid set id', function () use ($root) {
+    $r = setSold('1; rm -rf /', true, $root);
+    assertEq(false, $r['ok']);
+    assertTrue(str_contains((string)$r['error'], 'Invalid'), 'rejects bad id');
+});
+
+it('setSold rejects path traversal', function () use ($root) {
+    $sibling = dirname($root) . '/lego_test_sold_sibling_' . getmypid();
+    if (!is_dir($sibling)) mkdir($sibling, 0777, true);
+    $r = setSold('../' . basename($sibling), true, $root);
+    assertEq(false, $r['ok'], 'must reject traversal');
+    assertEq(false, is_file("$sibling/sold.txt"), 'sibling untouched');
+    exec('rm -rf ' . escapeshellarg($sibling));
+});
+
+it('setSold fails for missing set', function () use ($root) {
+    $r = setSold('88889', true, $root);
+    assertEq(false, $r['ok'], 'missing set must fail');
+});
+
+it('setSold fails when downloads dir missing', function () {
+    $r = setSold('12345', true, '/nonexistent/lego/path');
+    assertEq(false, $r['ok']);
+});
+
+it('resolveSetDir returns the real dir for a valid set', function () use ($root) {
+    $r = resolveSetDir('30640', $root);
+    assertTrue($r['dir'] !== null, 'resolved');
+    assertEq(null, $r['error']);
+    assertEq(realpath("$root/30640"), $r['dir']);
+});
+
 it('negotiateLocale picks highest q from supported subset', function () {
     $sup = ['en', 'de', 'fr'];
     assertEq('de', negotiateLocale('de-DE,de;q=0.9,en;q=0.8', $sup));
@@ -662,7 +773,9 @@ it('all locale catalogs cover the en key set', function () {
 it('jsStrings exposes the keys used by client code', function () {
     $js = jsStrings();
     foreach (['rename.save', 'rename.cancel', 'delete.confirm', 'status.downloading',
-              'status.done', 'status.network_error', 'count.set', 'count.sets'] as $k) {
+              'status.done', 'status.network_error', 'count.set', 'count.sets',
+              'menu.mark_sold', 'menu.mark_unsold', 'card.sold_badge', 'card.sold_on',
+              'filter.sold_count', 'sold.success', 'unsold.success', 'sold.failed'] as $k) {
         assertTrue(isset($js[$k]), "jsStrings missing $k");
     }
 });

@@ -191,6 +191,34 @@ a:hover { color: var(--accent-hover); }
   white-space: nowrap;
 }
 
+.filter-sold {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-dim);
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+
+.filter-sold input {
+  accent-color: var(--accent);
+  margin: 0;
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+}
+
+.filter-sold:hover { color: var(--text); }
+.filter-sold-count { font-variant-numeric: tabular-nums; }
+
+@media (max-width: 560px) {
+  .search-row { flex-wrap: wrap; }
+  .search-row input[type="search"] { flex-basis: 100%; }
+  .filter-sold { flex: 1; }
+}
+
 .status {
   font-size: 14px;
   color: var(--text-dim);
@@ -243,7 +271,35 @@ main { padding: 16px clamp(16px, 4vw, 40px) 60px; }
   border-color: var(--accent);
 }
 
+/* Search hides cards via the [hidden] attribute; .card sets display:flex so
+   the UA's [hidden] rule alone would lose. Sold cards stay in the DOM and are
+   hidden by CSS unless the container carries .show-sold. */
+.card[hidden] { display: none; }
+.cards:not(.show-sold) .card.is-sold { display: none; }
+
+.card.is-sold .card-image img { opacity: 0.55; filter: grayscale(0.6); }
+.card.is-sold .card-title { color: var(--text-dim); }
+
+.sold-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--err);
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}
+
+.card-sold-on { color: var(--err); }
+
 .card-image {
+  position: relative;
   aspect-ratio: 16 / 10;
   background: #0c0f1a;
   display: flex;

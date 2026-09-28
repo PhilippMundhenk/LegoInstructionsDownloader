@@ -55,6 +55,8 @@ function listSets(string $downloadsDir, string $publicPrefix = '/downloads'): ar
  *     'image'        => '/downloads/31099/31099_Prod.jpg' | null,
  *     'instructions' => [['pdf' => '/downloads/.../6308552.pdf', 'thumb' => '/downloads/.../6308552.png'], ...],
  *     'version'      => 1 | 2,
+ *     'sold'         => bool,                 // sold.txt marker present
+ *     'sold_on'      => '2026-09-28' | null,  // date from sold.txt, if any
  *   ]
  */
 function parseSet(string $dir, string $publicPrefix = '/downloads'): ?array {
@@ -73,6 +75,7 @@ function parseSet(string $dir, string $publicPrefix = '/downloads'): ?array {
 
     $hasDataJson = in_array('data.json', $files, true);
     $hasNameTxt  = in_array('name.txt', $files, true);
+    $hasSoldTxt  = in_array('sold.txt', $files, true);
 
     // Legacy sets are migrated to name.txt at container startup (see migrate.sh),
     // so by the time we get here everything should have one of these markers.
@@ -103,6 +106,17 @@ function parseSet(string $dir, string $publicPrefix = '/downloads'): ?array {
         }
     }
 
+    // sold.txt is the "this set has been sold" marker (see setSold). Its
+    // presence is what matters; the body is the ISO date it was written, which
+    // we surface as sold_on when it parses.
+    $soldOn = null;
+    if ($hasSoldTxt) {
+        $soldRaw = @file_get_contents($dir . '/sold.txt');
+        if (is_string($soldRaw) && preg_match('/\d{4}-\d{2}-\d{2}/', $soldRaw, $m)) {
+            $soldOn = $m[0];
+        }
+    }
+
     $image = findMainImage($files, $id);
     $instructions = findInstructions($files);
     if ($json !== null) {
@@ -129,6 +143,8 @@ function parseSet(string $dir, string $publicPrefix = '/downloads'): ?array {
             ];
         }, $instructions),
         'version'      => $version,
+        'sold'         => $hasSoldTxt,
+        'sold_on'      => $soldOn,
     ];
 }
 
@@ -370,6 +386,38 @@ function removeSet(string $setId, string $downloadsDir): array {
 }
 
 /**
+ * Resolve a set id to its real on-disk directory, refusing anything that is
+ * not a plain numeric id or that would land outside $downloadsDir. Shared by
+ * the write endpoints (rename, sold) so they all apply the same guard.
+ *
+ * Returns ['dir' => string|null, 'error' => string|null].
+ */
+function resolveSetDir(string $setId, string $downloadsDir): array {
+    $setId = trim($setId);
+    if (!preg_match('/^[0-9]{1,8}$/', $setId)) {
+        return ['dir' => null, 'error' => "Invalid set id: $setId"];
+    }
+    if (!is_dir($downloadsDir)) {
+        return ['dir' => null, 'error' => "Downloads dir does not exist"];
+    }
+    $target = $downloadsDir . '/' . $setId;
+    $realDl  = realpath($downloadsDir);
+    $realTgt = realpath($target);
+    if ($realDl === false || $realTgt === false) {
+        return ['dir' => null, 'error' => "Set not found"];
+    }
+    // realpath() returns native separators, so compare with DIRECTORY_SEPARATOR
+    // rather than a hard-coded '/' (keeps the unit tests honest on Windows too).
+    if (strpos($realTgt, rtrim($realDl, '/\\') . DIRECTORY_SEPARATOR) !== 0) {
+        return ['dir' => null, 'error' => "Refusing to write outside downloads dir"];
+    }
+    if (!is_dir($realTgt)) {
+        return ['dir' => null, 'error' => "Set directory missing"];
+    }
+    return ['dir' => $realTgt, 'error' => null];
+}
+
+/**
  * Rename a set by writing a sanitized name into its name.txt. parseSet() prefers
  * name.txt over data.json's title, so this works for both v1 (api-cached) and v2
  * (scraped) sets without touching the underlying data.json.
@@ -381,25 +429,11 @@ function removeSet(string $setId, string $downloadsDir): array {
  * Returns ['ok' => bool, 'error' => string|null, 'name' => string|null].
  */
 function renameSet(string $setId, string $name, string $downloadsDir): array {
-    $setId = trim($setId);
-    if (!preg_match('/^[0-9]{1,8}$/', $setId)) {
-        return ['ok' => false, 'error' => "Invalid set id: $setId", 'name' => null];
+    $resolved = resolveSetDir($setId, $downloadsDir);
+    if ($resolved['dir'] === null) {
+        return ['ok' => false, 'error' => $resolved['error'], 'name' => null];
     }
-    if (!is_dir($downloadsDir)) {
-        return ['ok' => false, 'error' => "Downloads dir does not exist", 'name' => null];
-    }
-    $target = $downloadsDir . '/' . $setId;
-    $realDl  = realpath($downloadsDir);
-    $realTgt = realpath($target);
-    if ($realDl === false || $realTgt === false) {
-        return ['ok' => false, 'error' => "Set not found", 'name' => null];
-    }
-    if (strpos($realTgt, rtrim($realDl, '/') . '/') !== 0) {
-        return ['ok' => false, 'error' => "Refusing to write outside downloads dir", 'name' => null];
-    }
-    if (!is_dir($realTgt)) {
-        return ['ok' => false, 'error' => "Set directory missing", 'name' => null];
-    }
+    $realTgt = $resolved['dir'];
     // Order matters: collapse whitespace (incl. \n, \t) first so they become
     // spaces, then strip remaining non-whitespace control chars.
     $clean = preg_replace('/\s+/u', ' ', $name);
@@ -416,6 +450,40 @@ function renameSet(string $setId, string $name, string $downloadsDir): array {
         return ['ok' => false, 'error' => 'Could not write name.txt', 'name' => null];
     }
     return ['ok' => true, 'error' => null, 'name' => $clean];
+}
+
+/**
+ * Mark a set as sold (or un-sold). Sold state lives next to the set's files as
+ * sold.txt so it travels with the folder when you move or back it up — same
+ * idea as name.txt. The file body is the date the set was marked, in ISO
+ * (Y-m-d) form; parseSet() surfaces it as sold_on. Unmarking deletes the file.
+ * Both directions are idempotent: re-marking keeps the original date.
+ *
+ * Returns ['ok' => bool, 'error' => string|null, 'sold' => bool, 'sold_on' => string|null].
+ */
+function setSold(string $setId, bool $sold, string $downloadsDir): array {
+    $resolved = resolveSetDir($setId, $downloadsDir);
+    if ($resolved['dir'] === null) {
+        return ['ok' => false, 'error' => $resolved['error'], 'sold' => false, 'sold_on' => null];
+    }
+    $path = $resolved['dir'] . '/sold.txt';
+    if ($sold) {
+        if (is_file($path)) {
+            $existing = @file_get_contents($path);
+            if (is_string($existing) && preg_match('/\d{4}-\d{2}-\d{2}/', $existing, $m)) {
+                return ['ok' => true, 'error' => null, 'sold' => true, 'sold_on' => $m[0]];
+            }
+        }
+        $today = date('Y-m-d');
+        if (@file_put_contents($path, $today . "\n") === false) {
+            return ['ok' => false, 'error' => 'Could not write sold.txt', 'sold' => false, 'sold_on' => null];
+        }
+        return ['ok' => true, 'error' => null, 'sold' => true, 'sold_on' => $today];
+    }
+    if (is_file($path) && !@unlink($path)) {
+        return ['ok' => false, 'error' => 'Could not remove sold.txt', 'sold' => true, 'sold_on' => null];
+    }
+    return ['ok' => true, 'error' => null, 'sold' => false, 'sold_on' => null];
 }
 
 /**

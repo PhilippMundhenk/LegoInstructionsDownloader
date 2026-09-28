@@ -9,8 +9,14 @@ $cssVer = @filemtime(__DIR__ . '/main.css') ?: 1;
 $diag = empty($sets) ? diagnoseDownloads($downloadsDir) : null;
 $locale = getLocale();
 $jsStrings = jsStrings();
+// Sold sets are hidden unless the show_sold cookie (set client-side by the
+// toggle) says otherwise. Rendering the initial state server-side means no
+// flash of sold cards before the script runs.
+$showSold = ($_COOKIE['show_sold'] ?? '') === '1';
 $nSets = count($sets);
-$countLabel = $nSets === 1 ? t('count.set', [$nSets]) : t('count.sets', [$nSets]);
+$nSold = count(array_filter($sets, fn($s) => $s['sold']));
+$nVisible = $showSold ? $nSets : $nSets - $nSold;
+$countLabel = $nVisible === 1 ? t('count.set', [$nVisible]) : t('count.sets', [$nVisible]);
 ?><!doctype html>
 <html lang="<?= htmlspecialchars($locale) ?>">
 <head>
@@ -51,6 +57,11 @@ $countLabel = $nSets === 1 ? t('count.set', [$nSets]) : t('count.sets', [$nSets]
     </form>
     <div class="search-row">
         <input id="search" type="search" placeholder="<?= htmlspecialchars(t('search.placeholder')) ?>" autocomplete="off">
+        <label class="filter-sold" for="show-sold">
+            <input id="show-sold" type="checkbox"<?= $showSold ? ' checked' : '' ?>>
+            <span><?= htmlspecialchars(t('filter.show_sold')) ?></span>
+            <span id="sold-count" class="filter-sold-count"><?= htmlspecialchars(t('filter.sold_count', [$nSold])) ?></span>
+        </label>
         <span id="count" class="count"><?= htmlspecialchars($countLabel) ?></span>
     </div>
     <div id="status" class="status" role="status" aria-live="polite"></div>
@@ -68,9 +79,10 @@ $countLabel = $nSets === 1 ? t('count.set', [$nSets]) : t('count.sets', [$nSets]
         <p class="empty"><?= htmlspecialchars(t('empty.no_sets')) ?></p>
     <?php endif; ?>
 <?php else: ?>
-    <ul class="cards" id="cards">
+    <p class="empty" id="empty-filtered"<?= $nVisible > 0 ? ' hidden' : '' ?>><?= htmlspecialchars(t('empty.filtered')) ?></p>
+    <ul class="cards<?= $showSold ? ' show-sold' : '' ?>" id="cards">
     <?php foreach ($sets as $set): ?>
-        <li class="card"
+        <li class="card<?= $set['sold'] ? ' is-sold' : '' ?>"
             data-id="<?= htmlspecialchars($set['id'], ENT_QUOTES) ?>"
             data-title="<?= htmlspecialchars(mb_strtolower($set['title']), ENT_QUOTES) ?>">
             <div class="card-image">
@@ -79,12 +91,15 @@ $countLabel = $nSets === 1 ? t('count.set', [$nSets]) : t('count.sets', [$nSets]
                 <?php else: ?>
                     <div class="no-image"><?= htmlspecialchars(t('card.no_image')) ?></div>
                 <?php endif; ?>
+                <?php if ($set['sold']): ?>
+                    <span class="sold-badge"><?= htmlspecialchars(t('card.sold_badge')) ?></span>
+                <?php endif; ?>
             </div>
             <div class="card-body">
                 <div class="card-header">
                     <div class="card-meta">
                         <h2 class="card-title"><?= htmlspecialchars($set['title']) ?></h2>
-                        <div class="card-id">#<?= htmlspecialchars($set['id']) ?></div>
+                        <div class="card-id">#<?= htmlspecialchars($set['id']) ?><?php if ($set['sold'] && $set['sold_on']): ?><span class="card-sold-on"> &middot; <?= htmlspecialchars(t('card.sold_on', [$set['sold_on']])) ?></span><?php endif; ?></div>
                     </div>
                     <div class="card-menu">
                         <button class="card-menu-btn"
@@ -106,6 +121,9 @@ $countLabel = $nSets === 1 ? t('count.set', [$nSets]) : t('count.sets', [$nSets]
                                    target="_blank"
                                    rel="noopener noreferrer"><?= htmlspecialchars($link['label']) ?></a>
                             <?php endforeach; ?>
+                            <button class="card-menu-item card-sold"
+                                    role="menuitem"
+                                    type="button"><?= htmlspecialchars(t($set['sold'] ? 'menu.mark_unsold' : 'menu.mark_sold')) ?></button>
                             <button class="card-menu-item card-menu-item--danger card-delete"
                                     role="menuitem"
                                     type="button"><?= htmlspecialchars(t('menu.delete')) ?></button>
@@ -152,6 +170,9 @@ window.I18N = <?= json_encode($jsStrings, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG 
     const cards   = document.getElementById('cards');
     const count   = document.getElementById('count');
     const topbar  = document.querySelector('.topbar');
+    const showSoldBox = document.getElementById('show-sold');
+    const soldCount   = document.getElementById('sold-count');
+    const emptyFiltered = document.getElementById('empty-filtered');
 
     // sprintf-lite: replaces %s and %d (in order) with the provided args.
     function tr(key, ...args) {
@@ -226,10 +247,27 @@ window.I18N = <?= json_encode($jsStrings, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG 
 
     let items = cards ? Array.from(cards.children) : [];
 
+    function showingSold() {
+        return !!(cards && cards.classList.contains('show-sold'));
+    }
+
+    function isVisible(it) {
+        if (it.hidden) return false;
+        return showingSold() || !it.classList.contains('is-sold');
+    }
+
     function refreshCount() {
-        if (!count) return;
-        const visible = items.filter(it => it.style.display !== 'none').length;
-        count.textContent = tr(visible === 1 ? 'count.set' : 'count.sets', visible);
+        const visible = items.filter(isVisible).length;
+        if (count) {
+            count.textContent = tr(visible === 1 ? 'count.set' : 'count.sets', visible);
+        }
+        if (soldCount) {
+            const sold = items.filter(it => it.classList.contains('is-sold')).length;
+            soldCount.textContent = tr('filter.sold_count', sold);
+        }
+        if (emptyFiltered) {
+            emptyFiltered.hidden = visible > 0 || items.length === 0;
+        }
     }
 
     if (search && cards) {
@@ -239,8 +277,19 @@ window.I18N = <?= json_encode($jsStrings, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG 
                 const id = it.dataset.id || '';
                 const title = it.dataset.title || '';
                 const match = !q || id.includes(q) || title.includes(q);
-                it.style.display = match ? '' : 'none';
+                it.hidden = !match;
             }
+            refreshCount();
+        });
+    }
+
+    // "Show sold sets" toggle. The choice is persisted in a cookie so the
+    // server can render the right initial state on the next load.
+    if (showSoldBox && cards) {
+        showSoldBox.addEventListener('change', function () {
+            cards.classList.toggle('show-sold', showSoldBox.checked);
+            document.cookie = 'show_sold=' + (showSoldBox.checked ? '1' : '0')
+                + '; path=/; max-age=' + (365 * 24 * 3600) + '; samesite=lax';
             refreshCount();
         });
     }
@@ -307,6 +356,67 @@ window.I18N = <?= json_encode($jsStrings, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG 
             } catch (err) {
                 btn.disabled = false;
                 card.classList.remove('deleting');
+                setStatus(tr('status.network_error', err.message), false);
+            }
+        });
+    }
+
+    function applySoldState(card, sold, soldOn) {
+        card.classList.toggle('is-sold', sold);
+        const image = card.querySelector('.card-image');
+        let badge = card.querySelector('.sold-badge');
+        if (sold && !badge && image) {
+            badge = document.createElement('span');
+            badge.className = 'sold-badge';
+            badge.textContent = tr('card.sold_badge');
+            image.appendChild(badge);
+        } else if (!sold && badge) {
+            badge.remove();
+        }
+        const idEl = card.querySelector('.card-id');
+        let dateEl = card.querySelector('.card-sold-on');
+        if (sold && soldOn && idEl) {
+            if (!dateEl) {
+                dateEl = document.createElement('span');
+                dateEl.className = 'card-sold-on';
+                idEl.appendChild(dateEl);
+            }
+            dateEl.textContent = ' \u00b7 ' + tr('card.sold_on', soldOn);
+        } else if (!sold && dateEl) {
+            dateEl.remove();
+        }
+        const menuBtn = card.querySelector('.card-sold');
+        if (menuBtn) menuBtn.textContent = tr(sold ? 'menu.mark_unsold' : 'menu.mark_sold');
+    }
+
+    if (cards) {
+        cards.addEventListener('click', async function (e) {
+            const btn = e.target.closest('.card-sold');
+            if (!btn) return;
+            closeAllMenus(null);
+            const card = btn.closest('.card');
+            if (!card) return;
+            const id = card.dataset.id || '';
+            if (!id) return;
+            const next = !card.classList.contains('is-sold');
+            btn.disabled = true;
+            try {
+                const res = await fetch('sold.php', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded', 'Accept': 'application/json'},
+                    body: 'set_id=' + encodeURIComponent(id) + '&sold=' + (next ? '1' : '0'),
+                });
+                const data = await res.json();
+                btn.disabled = false;
+                if (data.ok) {
+                    applySoldState(card, !!data.sold, data.sold_on || null);
+                    refreshCount();
+                    setStatus(tr(data.sold ? 'sold.success' : 'unsold.success', id), true);
+                } else {
+                    setStatus(data.error || tr('sold.failed'), false);
+                }
+            } catch (err) {
+                btn.disabled = false;
                 setStatus(tr('status.network_error', err.message), false);
             }
         });

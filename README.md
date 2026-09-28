@@ -18,9 +18,14 @@ back up, or delete sets with normal file tools.
   stays visible on long pages.
 - **Per-set actions menu** — three-dot menu on each card to
   - rename the set (inline edit, saved to `name.txt`)
+  - mark the set as sold / not sold (saved to `sold.txt`)
   - jump to the set's pages on LEGO.com, BrickLink, Brickset,
     Rebrickable, and the LEGO building-instructions site
   - delete the set (with a confirmation) — removes the folder from disk
+- **Sold sets** — sold sets are hidden from the grid by default. A
+  "Show sold sets" toggle next to the search box reveals them (greyed
+  out, with a Sold badge and the date). The choice is remembered in a
+  cookie.
 - **Six-language UI** — English, German, Spanish, French, Hindi,
   Chinese. Auto-detected from your browser's `Accept-Language` and
   overridable from a language switcher in the topbar (persisted via
@@ -68,6 +73,11 @@ Then open <http://localhost:8080>.
 - `?lang=en|de|es|fr|hi|zh` — force the UI language; the choice is
   remembered in a cookie.
 
+### Cookies
+
+- `lang` — UI language chosen via `?lang=` or the switcher.
+- `show_sold` — `1` when the "Show sold sets" toggle is on.
+
 ## On-disk layout
 
 Each downloaded set is one folder named after its set number:
@@ -77,6 +87,7 @@ Each downloaded set is one folder named after its set number:
   31099/
     data.json              # raw API response (v1 sets)
     name.txt               # human-readable name; wins over data.json
+    sold.txt               # present = set is sold; body is the ISO date
     31099_Prod.jpg         # product image
     6308552.pdf            # building instructions
     6308552.png            # …with thumbnail
@@ -88,7 +99,10 @@ Each downloaded set is one folder named after its set number:
 ```
 
 Renaming a set just writes `name.txt`; the original `data.json` is
-never modified.
+never modified. Marking a set as sold writes `sold.txt` (containing the
+date, e.g. `2026-09-28`) into the same folder, and unmarking deletes it.
+Because the state lives with the set's files, it survives moving or
+backing up the folder, and you can toggle it by hand with `touch` / `rm`.
 
 ## Development
 
@@ -101,7 +115,7 @@ Run the test suite:
 php tests/run_tests.php
 ```
 
-53 tests cover the parser, dedup, rename / delete safety (shell
+68 tests cover the parser, dedup, rename / delete / sold safety (shell
 injection, path traversal), external-link URL shapes, and i18n
 (Accept-Language negotiation, catalog completeness, sprintf fallback).
 
