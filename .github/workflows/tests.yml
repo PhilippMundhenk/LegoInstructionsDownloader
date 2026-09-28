@@ -45,3 +45,6 @@ jobs:
 
       - name: migrate.sh resilience tests
         run: bash tests/test_migrate_resilience.sh
+
+      - name: Card menu stacking (headless Chrome hit-test)
+        run: bash tests/test_menu_stacking.sh

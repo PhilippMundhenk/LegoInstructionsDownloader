@@ -256,6 +256,7 @@ main { padding: 16px clamp(16px, 4vw, 40px) 60px; }
 }
 
 .card {
+  position: relative;
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -265,6 +266,15 @@ main { padding: 16px clamp(16px, 4vw, 40px) 60px; }
   /* no overflow:hidden — would clip .card-menu-popover. The image's rounded
      top corners are handled on .card-image directly. */
 }
+
+/* The card whose three-dot menu is open must paint above its siblings. The
+   hover transform below turns a card into a stacking context, which scopes
+   the popover's z-index to that card; any later positioned box in a sibling
+   (e.g. .card-image, positioned for the Sold badge) would then paint over the
+   popover where it overhangs the next row. Lifting the whole card fixes that
+   regardless of what the neighbours contain. Toggled by the menu JS.
+   tests/test_menu_stacking.sh guards this with a headless hit-test. */
+.card.menu-open { z-index: 30; }
 
 .card:hover {
   transform: translateY(-2px);

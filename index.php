@@ -300,6 +300,8 @@ window.I18N = <?= json_encode($jsStrings, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG 
             p.hidden = true;
             const btn = p.parentElement && p.parentElement.querySelector('.card-menu-btn');
             if (btn) btn.setAttribute('aria-expanded', 'false');
+            const card = p.closest('.card');
+            if (card) card.classList.remove('menu-open');
         });
     }
 
@@ -314,6 +316,10 @@ window.I18N = <?= json_encode($jsStrings, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG 
             closeAllMenus(willOpen ? popover : null);
             popover.hidden = !willOpen;
             trigger.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+            // .menu-open lifts this card above its siblings so the popover is
+            // not painted under the next row (see main.css).
+            const card = trigger.closest('.card');
+            if (card) card.classList.toggle('menu-open', willOpen);
         });
     }
 

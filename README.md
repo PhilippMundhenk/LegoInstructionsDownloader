@@ -123,5 +123,10 @@ The end-to-end harness boots a real lighttpd + php-cgi against a
 fixture downloads directory and curls every endpoint — see
 `tests/e2e/`.
 
+`tests/test_menu_stacking.sh` renders the index with `php` and loads it
+in headless Chrome to hit-test that an open three-dot menu is not painted
+underneath the next row of cards. It needs `php` and a Chrome/Chromium
+binary (set `CHROME=` to point at one).
+
 CI runs both suites on every push to `main`; the green build also
 publishes the Docker image to `ghcr.io/philippmundhenk/legoinstructionsdownloader:latest`.
